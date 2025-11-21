@@ -1,0 +1,5 @@
+{
+  "name": "AutoBlog AI Professional",
+  "description": "A professional CMS with an AI Agent capable of trend analysis, long-form article generation (Gemini 2.5 Flash), and high-fidelity image generation (Nano Banana Pro / Gemini 3 Pro Image).",
+  "requestFramePermissions": []
+}
