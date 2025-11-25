@@ -237,7 +237,11 @@ app.get('/autopilot/status', async (req, res) => {
 });
 
 // init AI Worker, then start server
-aiWorker.init(db);
+try {
+  aiWorker.init(db);
+} catch (err) {
+  console.error('aiWorker.init failed:', err);
+}
 // setup SSE clients list and emitter
 const sseClients = new Set();
 const eventEmitter = new EventEmitter();
@@ -282,37 +286,49 @@ app.post('/auth/login', async (req, res) => {
   if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) return res.status(401).json({ message: 'Invalid credentials' });
 
   try {
+    console.log('/auth/login request from', req.ip, req.get('origin'));
     const expiresIn = remember ? 7 * 24 * 60 * 60 * 1000 : (60 * 60 * 1000); // 7 days or 1 hour
     const expiresAt = Date.now() + expiresIn;
     const token = await createSession(email, expiresAt);
     res.cookie('session_id', token, { httpOnly: true, secure: false, sameSite: 'lax', maxAge: expiresIn });
     res.json({ message: 'Logged in', email });
   } catch (err) {
+    console.error('/auth/login error:', err);
     res.status(500).json({ message: 'Failed to create session', error: err?.message || err });
   }
 });
 
 app.post('/auth/logout', async (req, res) => {
   try {
+    console.log('/auth/logout request', req.ip);
     const token = req.cookies?.session_id || req.header('X-Session-Token');
     if (token) await destroySession(token);
     res.clearCookie('session_id');
     res.json({ message: 'Logged out' });
   } catch (err) {
+    console.error('/auth/logout error', err);
     res.status(500).json({ message: 'Logout failed', error: err?.message || err });
   }
 });
 
 app.get('/auth/session', async (req, res) => {
   try {
+    console.log('/auth/session check from', req.ip);
     const token = req.cookies?.session_id || req.header('X-Session-Token');
     if (!token) return res.json({ loggedIn: false });
     const session = await validateSession(token);
     if (!session) return res.json({ loggedIn: false });
     res.json({ loggedIn: true, email: session.email });
   } catch (err) {
+    console.error('/auth/session error', err);
     res.status(500).json({ message: 'Session check failed', error: err?.message || err });
   }
+});
+
+// global error handler to avoid crashing and to provide better errors
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err.stack || err);
+  res.status(500).json({ message: 'Internal Server Error', error: err?.message || err });
 });
 
 app.listen(PORT, () => {

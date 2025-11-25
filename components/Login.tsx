@@ -25,7 +25,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onBack, adminProfile }) =
         onLogin(rememberMe);
         return;
       } catch (e:any) {
-        setError(e?.message || 'فشل تسجيل الدخول');
+        const message = e?.message || 'فشل تسجيل الدخول';
+        setError(message + (message.includes('Backend returned') ? ' — تحقق من تشغيل الخادم والـ VITE_BACKEND_URL' : ''));
         return;
       }
     }

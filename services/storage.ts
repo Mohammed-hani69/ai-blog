@@ -398,7 +398,13 @@ export const serverLogin = async (email: string, password: string, remember: boo
   if (!USE_BACKEND || !BACKEND_URL) return null;
   try {
     const r = await fetch(`${BACKEND_URL}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, remember }), credentials: 'include' });
-    if (!r.ok) throw new Error(`Backend returned ${r.status}`);
+    if (!r.ok) {
+      let bodyText = null;
+      try { bodyText = await r.text(); } catch (e) { }
+      let msg = `Backend returned ${r.status}`;
+      try { const parsed = JSON.parse(bodyText); msg = parsed?.message || msg; } catch (e) { if (bodyText) msg += ` - ${bodyText}`; }
+      throw new Error(msg);
+    }
     return await r.json();
   } catch (e) {
     console.warn('Backend serverLogin error', e);
@@ -410,7 +416,11 @@ export const serverLogout = async (): Promise<any> => {
   if (!USE_BACKEND || !BACKEND_URL) return null;
   try {
     const r = await fetch(`${BACKEND_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
-    if (!r.ok) throw new Error(`Backend returned ${r.status}`);
+    if (!r.ok) {
+      let bodyText = null;
+      try { bodyText = await r.text(); } catch (e) {}
+      throw new Error(`Logout failed: ${r.status} ${bodyText || ''}`);
+    }
     return await r.json();
   } catch (e) {
     console.warn('Backend serverLogout error', e);
@@ -422,7 +432,11 @@ export const getServerSession = async (): Promise<any> => {
   if (!USE_BACKEND || !BACKEND_URL) return null;
   try {
     const r = await fetch(`${BACKEND_URL}/auth/session`, { credentials: 'include' });
-    if (!r.ok) throw new Error(`Backend returned ${r.status}`);
+    if (!r.ok) {
+      let bodyText = null;
+      try { bodyText = await r.text(); } catch (e) { }
+      throw new Error(`Backend session check returned ${r.status} ${bodyText || ''}`);
+    }
     return await r.json();
   } catch (e) {
     console.warn('Backend getServerSession error', e);
