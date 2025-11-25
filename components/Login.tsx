@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
 import { Logo } from './Logo';
+import { AdminProfile } from '../types';
 
 interface LoginProps {
   onLogin: () => void;
   onBack: () => void;
+  adminProfile: AdminProfile;
 }
 
-export const Login: React.FC<LoginProps> = ({ onLogin, onBack }) => {
-  const [email, setEmail] = useState('admin@mazadplus.com');
-  const [password, setPassword] = useState('admin');
+export const Login: React.FC<LoginProps> = ({ onLogin, onBack, adminProfile }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'admin') {
+    // Verify against stored admin profile
+    if (email === adminProfile.email && password === adminProfile.password) {
       onLogin();
     } else {
-      setError('بيانات الدخول غير صحيحة (جرب admin/admin)');
+      setError('بيانات الدخول غير صحيحة');
     }
   };
 

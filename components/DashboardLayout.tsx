@@ -1,14 +1,16 @@
 import React from 'react';
 import { Sidebar } from './Sidebar';
+import { AdminProfile } from '../types';
 
 interface DashboardLayoutProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   children: React.ReactNode;
   onLogout: () => void;
+  adminProfile: AdminProfile;
 }
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ activeTab, setActiveTab, children, onLogout }) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ activeTab, setActiveTab, children, onLogout, adminProfile }) => {
   
   const getTabTitle = (tab: string) => {
     switch(tab) {
@@ -17,13 +19,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ activeTab, set
       case 'ai-control': return 'الطيار الآلي (AI)';
       case 'manual': return 'كتابة يدوية';
       case 'ads': return 'إدارة الإعلانات';
+      case 'profile': return 'إعدادات الحساب';
       default: return tab;
     }
   }
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans" dir="rtl">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} adminProfile={adminProfile} />
       
       <main className="flex-1 mr-64 transition-all duration-300">
         {/* Top Bar */}

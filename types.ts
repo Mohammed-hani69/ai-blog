@@ -51,6 +51,13 @@ export interface AdSettings {
   adsTxtContent: string; // Content for ads.txt file
 }
 
+export interface AdminProfile {
+  name: string;
+  email: string;
+  password: string; // In a real app, this should be hashed.
+  avatarUrl?: string;
+}
+
 export interface LogEntry {
   timestamp: string;
   message: string;

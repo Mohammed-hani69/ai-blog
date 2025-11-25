@@ -10,7 +10,8 @@ import { DashboardHome } from './components/DashboardHome';
 import { CategoryPage } from './components/CategoryPage';
 import { AdSettingsPanel } from './components/AdSettingsPanel';
 import { AIControlPanel } from './components/AIControlPanel';
-import { BlogPost, AISettings, LogEntry, AIState, Comment, AdSettings } from './types';
+import { AdminProfilePanel } from './components/AdminProfile';
+import { BlogPost, AISettings, LogEntry, AIState, Comment, AdSettings, AdminProfile } from './types';
 import * as GeminiService from './services/geminiService';
 
 // Error Boundary Component
@@ -83,6 +84,12 @@ const initialAdSettings: AdSettings = {
   adsTxtContent: '',
 };
 
+const initialAdminProfile: AdminProfile = {
+  name: 'المدير العام',
+  email: 'admin@mazadplus.com',
+  password: 'admin',
+};
+
 // Sample Data
 const SAMPLE_POSTS: BlogPost[] = [
   {
@@ -139,7 +146,8 @@ const SAMPLE_POSTS: BlogPost[] = [
 
 function AppContent() {
   // Routing State
-  const [currentPath, setCurrentPath] = useState('/');
+  // Check URL path initially
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
@@ -149,10 +157,9 @@ function AppContent() {
   // Dashboard Tabs
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // App Data - Initialize from LocalStorage if available (using new 'mazadplus_' keys)
+  // App Data - Initialize from LocalStorage
   const [posts, setPosts] = useState<BlogPost[]>(() => {
     try {
-      // Changed storage key from omniblog_posts to mazadplus_posts
       const savedPosts = localStorage.getItem('mazadplus_posts');
       if (savedPosts) {
         const parsed: BlogPost[] = JSON.parse(savedPosts);
@@ -171,12 +178,19 @@ function AppContent() {
   const [settings, setSettings] = useState<AISettings>(initialSettings);
   const [adSettings, setAdSettings] = useState<AdSettings>(() => {
     try {
-      // Changed storage key from omniblog_ads to mazadplus_ads
       const savedAds = localStorage.getItem('mazadplus_ads');
-      // Merge with initialAdSettings to ensure new fields (like adsTxtContent) exist
       return savedAds ? { ...initialAdSettings, ...JSON.parse(savedAds) } : initialAdSettings;
     } catch (e) {
       return initialAdSettings;
+    }
+  });
+
+  const [adminProfile, setAdminProfile] = useState<AdminProfile>(() => {
+    try {
+      const savedProfile = localStorage.getItem('mazadplus_admin_profile');
+      return savedProfile ? JSON.parse(savedProfile) : initialAdminProfile;
+    } catch (e) {
+      return initialAdminProfile;
     }
   });
   
@@ -193,11 +207,25 @@ function AppContent() {
     localStorage.setItem('mazadplus_ads', JSON.stringify(adSettings));
   }, [adSettings]);
 
+  useEffect(() => {
+    localStorage.setItem('mazadplus_admin_profile', JSON.stringify(adminProfile));
+  }, [adminProfile]);
+
   // Router logic
   const navigate = (path: string) => {
     setCurrentPath(path);
+    window.history.pushState({}, '', path);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Listen to browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const navigateToCategory = (category: string) => {
     setSelectedCategory(category);
@@ -392,16 +420,25 @@ function AppContent() {
   
   // 1. Login
   if (currentPath === '/login') {
-    return <Login onLogin={() => { setIsAuthenticated(true); navigate('/dashboard'); }} onBack={() => navigate('/')} />;
+    return <Login 
+      onLogin={() => { setIsAuthenticated(true); navigate('/dashboard'); }} 
+      onBack={() => navigate('/')} 
+      adminProfile={adminProfile}
+    />;
   }
 
   // 2. Dashboard
   if (currentPath === '/dashboard') {
     if (!isAuthenticated) {
-      return <Login onLogin={() => { setIsAuthenticated(true); navigate('/dashboard'); }} onBack={() => navigate('/')} />;
+      return <Login onLogin={() => { setIsAuthenticated(true); navigate('/dashboard'); }} onBack={() => navigate('/')} adminProfile={adminProfile} />;
     }
     return (
-      <DashboardLayout activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => { setIsAuthenticated(false); navigate('/'); }}>
+      <DashboardLayout 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        onLogout={() => { setIsAuthenticated(false); navigate('/'); }}
+        adminProfile={adminProfile}
+      >
         {activeTab === 'dashboard' && <DashboardHome posts={posts} aiState={aiState} logs={logs} onNavigate={setActiveTab} />}
         {activeTab === 'analytics' && <AnalyticsDashboard posts={posts} />}
         {activeTab === 'ads' && <AdSettingsPanel settings={adSettings} onSave={setAdSettings} />}
@@ -415,6 +452,7 @@ function AppContent() {
            />
         )}
         {activeTab === 'manual' && <ManualEditor onPublish={handleManualPublish} />}
+        {activeTab === 'profile' && <AdminProfilePanel profile={adminProfile} onSave={setAdminProfile} />}
       </DashboardLayout>
     );
   }

@@ -94,12 +94,7 @@ export const PublicBlog: React.FC<PublicBlogProps> = ({ posts, adSettings, onNav
             <button className="hidden md:flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </button>
-            <button 
-              onClick={() => onNavigate('/login')}
-              className="bg-slate-900 text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-blue-600 transition-all shadow-lg hover:shadow-blue-900/20 transform hover:-translate-y-0.5"
-            >
-              دخول
-            </button>
+            {/* Login button removed as requested */}
           </div>
         </div>
       </header>
