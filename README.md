@@ -1,40 +1,135 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# MazadPlus AI Blog (مشروع مزاد بلس - AI Autopilot)
 
-# Run and deploy your AI Studio app
+دليل تشغيل وتوثيق مشروع المزاد بلس (AI Blog) مع تفصيل لكيفية إعداد الطيار الآلي (Autopilot) الآمن على الخادم، وشرح مشاكل شائعة وإرشادات تشخيص الأخطاء (مثل 502 Bad Gateway).
 
-This contains everything you need to run your app locally.
+هذا المشروع يحتوي على واجهة أمامية React وواجهة خلفية Express (Node + SQLite) وينفذ توليد مقالات وصور تلقائياً باستخدام مكتبة Google GenAI عند تفعيل الطيار الآلي.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1in1nIyxE3LLTezc5ckqgp-Z3jF1Wek56
+---
 
-## Run Locally
+## المزايا الرئيسية
+- توليد مقالات تلقائياً (AI Autopilot) مع صور بواسطة Google GenAI
+- إمكانية النشر التلقائي أو الحفظ كـ مسودة
+- جدولة المقالات عبر الخادم (تستمر في العمل عند تسجيل الخروج من لوحة الأدمن)
+- رؤية السجل والحالة (Logs / Status) في واجهة الإدارة
+- إدارة المستخدم البسيطة (تسجيل دخول الأدمن) مع جلسات آمنة على الخادم (HTTP-only cookie)
+- دوال REST لخدمات بيانات المشاركات، الإعدادات، والحالة
+- SSE (Server-Sent Events) لبث حالة وطباعة سجلات الطيار الآلي في الوقت الفعلي
 
-**Prerequisites:**  Node.js
+---
 
+## متطلبات التشغيل
+- Node.js >= 18
+- npm
+- (اختياري) واجهة إلى الإنترنت للوصول إلى خدمات GenAI
+- (في الوضع المحلي) لا حاجة لقاعدة خارجية: المشروع يستخدم SQLite
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. (Optional but recommended) Start the included backend to enable shared server-side storage so posts are visible to everyone:
-   - Start the backend: `cd server && npm install && npm start` (defaults to `http://localhost:4000`)
-      - Ensure you set `GEMINI_API_KEY` in `server/.env` and `VITE_BACKEND_URL` in the client's `.env.local` (e.g., VITE_BACKEND_URL=http://localhost:4000)
-       - Ensure you set `GEMINI_API_KEY` in `server/.env` and `VITE_BACKEND_URL` in the client's `.env.local` (e.g., VITE_BACKEND_URL=http://localhost:4000)
-       - For secure admin access, set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `server/.env` to control backend login. By default the server uses the values in `.env` example.
+---
 
-      Real-time updates:
-      - The backend also exposes a Server-Sent Events endpoint at `/autopilot/events`. When logged-in as an admin, the frontend subscribes to this stream for real-time autopilot logs and status updates (no more polling required).
-      - Make sure to set `GEMINI_API_KEY` in `.env` or `process.env` (server side) before running the backend so it can generate content automatically.
-   - Set `VITE_BACKEND_URL` in `.env.local` to the backend URL if you run it elsewhere.
+## ملفات مهمة
+- `App.tsx` - واجهة React الرئيسية
+- `components/AIControlPanel.tsx` - لوحة إدارة الطيار الآلي
+- `services/geminiService.ts` - واجهة توليد المحتوى/الصورة عبر GenAI
+- `server/` - تطبيق Express الخلفي (SQLite + endpoints)
+- `server/aiWorker.js` - منطق وضبط جدولة الطيار الآلي على الخادم
+- `services/storage.ts` - واجهة التخزين (SQLite محلي أو backend)
 
-   When the backend is running, the UI will use it to persist and receive posts, otherwise it will continue using the browser-based SQLite DB (local only).
+---
 
-   Autopilot (Server-side scheduling):
-   - Use the `AI Autopilot` panel to save settings and start the autopilot. When the backend is active and configured, the autopilot will run on the server and will continue generating articles in the background even if you log out of the admin UI. The server automatically schedules daily runs and respects the "articles per day" setting. Use the "إيقاف الطيار" button in the control panel to stop it.
+## إعداد المتغيرات البيئية (ENV)
+في ملف `server/.env` أو متغيرات النظام:
+- `GEMINI_API_KEY` — مفتاح Gemini API الخاص بك (مطلوب لتوليد محتوى/صور)
+- `BACKEND_PORT` — منفذ backend (الافتراضي 4000)
+- `ADMIN_EMAIL` — بريد الأدمن (الافتراضي: admin@mazadplus.com)
+- `ADMIN_PASSWORD` — كلمة المرور للأدمن (الافتراضي: admin)
 
-   Persistent Admin Session:
-   - The login form allows you to use the "تذكرني" (Remember me) checkbox. If checked, the admin session is saved to `localStorage`, and the admin will remain logged in after reloading the page. If not checked, the session won't be persisted and a reload will require login again.
+في ملف الواجهة الأمامية `.env.local`:
+- `VITE_BACKEND_URL` — URL الخاص بالخادم (مثلاً: `http://localhost:4000`)
 
-   Security notice: This demo stores session information in `localStorage` for convenience. For production deployments, replace this with secure server-side sessions or token-based authentication (HTTP-only cookies, token expiration, refresh tokens, etc.).
-3. Run the app:
-   `npm run dev`
+ملحوظة أمان: لا تستخدم القيم الافتراضية في بيئة الإنتاج. احفظ المفاتيح الحساسة بشكل آمن (secret manager) ووفر HTTPS.
+
+---
+
+## تشغيل محلي (Development)
+1. تثبيت الحزم وتشغيل الواجهة:
+```powershell
+# من جذر المشروع
+npm install
+npm run dev
+```
+
+2. تشغيل الخادم المحلي (اختياري لكن يُنصح لتخزين مشترك ولتشغيل الطيار الآلي على الخادم):
+```powershell
+cd server
+npm install
+# ضع متغيرات env في server/.env
+npm start
+```
+
+3. ضبط المتغير `VITE_BACKEND_URL` في `.env.local` ليتطابق مع عنوان الخادم
+
+---
+
+## كيفية استخدام الطيار الآلي (Autopilot)
+1. سجّل دخول الأدمن إلى اللوحة.
+2. اذهب إلى لوحة `AI Autopilot` واضبط الإعدادات (المجال، الكلمات المفتاحية، عدد المقالات في اليوم، جودة الصورة).
+3. استخدم الخيار "حفظ الإعدادات وبدء التشغيل".
+   - إذا كان لديك backend فعّال، سيبدأ الطيار الآلي على الخادم (سيستمر العمل بعد تسجيل الخروج).
+   - إذا لم يكن هناك backend، فسيعمل الطيار محليًا داخل متصفحك طالما أن الصفحة مفتوحة.
+4. يمكنك إيقاف الطيار عبر زر "إيقاف الطيار" في نفس الواجهة.
+
+● توزيع المنشورات: يوزّع الطيار عدد المقالات على مدار 24 ساعة وفق قيمة `articlesPerDay`.
+
+---
+
+## نقاط النهاية (Backend API)
+- GET `/posts`, GET `/posts/:id`, POST `/posts`, PUT `/posts/:id`, DELETE `/posts/:id` (محمية بالمصادقة عند الحاجة)
+- GET `/settings`, POST `/settings` (حفظ إعدادات الطيار)
+- POST `/autopilot/start`, POST `/autopilot/stop`, GET `/autopilot/status` (محمي)
+- GET `/autopilot/events` — SSE (Server-Sent Events) لبث التحديثات (محمي)
+- POST `/auth/login`, POST `/auth/logout`, GET `/auth/session` — مصادقة الجلسات
+- GET `/healthz` — health check بسيط
+- GET `/debug` — endpoint تشخيصي (يمكن الوصول محلياً أو عبر جلسة مصادقة)
+
+---
+
+## مصادقة وأمان
+- عند استخدام backend، يتم استعمال جلسات آمنة عبر كوكي HTTP-only (`session_id`) بدلاً من تخزين كلمة المرور في LocalStorage.
+- استخدم `ADMIN_EMAIL` و `ADMIN_PASSWORD` لتسجيل الدخول. (في الإنتاج، استبدال هذه القيم بحسابات حقيقية وتهيئة hashing لكلمات المرور إن أمكن).
+- تأكد استخدام HTTPS في الإنتاج.
+- لحماية نقاط النهاية الحساسة، حرصت على فحص الجلسة (session) قبل السماح بالعمليات.
+
+---
+
+## تشخيص الأخطاء الشائعة (مثل 502 Bad Gateway)
+1. رسالة `502 Bad Gateway` تظهر عادةً من Nginx عندما لا يستطيع الوصول إلى خدمة الخلفية (backend) أو عندما تكون الخدمة غير متاحة (crash).
+2. خطوات سريعة للتحقق:
+   - تأكد أن الخادم يعمل: `cd server && npm start` أو تحقق عبر `pm2` أو `systemd`.
+   - تحقق من أن Node يستمع للمنفذ المتوقع (4000 عادةً): `ss -tunlp | grep 4000`.
+   - اختبر مباشرة على الخادم: `curl -i http://127.0.0.1:4000/healthz`.
+   - افحص سجلات nginx: `sudo tail -n 200 /var/log/nginx/error.log` و `sudo tail -n 200 /var/log/nginx/access.log`.
+   - تحقق من `server` logs: إن اشتغل عبر systemd استخدم `journalctl -u <service> -f` أو راجع الطرفية إذا شغّلت Node يدوياً.
+   - استخدم endpoint `/debug` للحصول على حِزمة لمحة عن الحالة (sessions، عدد المنشورات، حالة الـ AI worker، متغيرات env الأساسية).
+
+بلغة مختصرة: إذا كان الخادم يجيب عن `http://127.0.0.1:4000/healthz` لكن nginx يعطي 502، فالمشكلة غالبًا تكمن في إعداد nginx (`proxy_pass`) أو مشكلة جدار ناري.
+
+---
+
+## نصائح تشغيلية للمحاكاة والاختبار
+- استخدام `pm2` لإدارة عملية Node: `pm2 start index.js --name mazadplus` ويستخدم لـ auto-restart.
+- قم بتشغيل الخادم ضمن process manager في بيئة الإنتاج (systemd / pm2) وليس في `npm run dev` فقط.
+- مراقبة السجلات دورياً، خصوصاً في حالة فشل الاتصالات إلى GenAI (نفاذ مفتاح API أو أخطاء الصلاحيات). 
+
+---
+
+## تطوير ومساهمة
+- اتبع معايير TypeScript/React المتواجدة في المشروع.
+- جرّب الإضافات في فرع منفصل وادفع PR مرجعي يحتوي الشرح والتعليمات.
+
+---
+
+إذا رغبت أن أضع محتوى README بلغة ثانية (English) أو تضيف أجزاء معينة خاصة بطريقة النشر في بيئة الإنتاج (CI/CD, Docker, nginx config للوضع الآمن) فأعلمني وسأقوم بتحضير ذلك ودمجه.
+
+شكراً — إذا رغبت، أستطيع الآن أيضًا:
+- إعداد نظام تسجيل دخول آمن أكثر (bcrypt + DB) بدلاً من env-based admin.
+- تكوين `systemd` أو `pm2` scripts لتشغيل الخادم تلقائياً.
+- فحص إعدادات `nginx` لديك والمساعدة في إصلاح 502 إذا أعطيتني إعدادات nginx `server` و `upstream`.
