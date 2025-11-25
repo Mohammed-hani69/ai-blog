@@ -325,6 +325,31 @@ app.get('/auth/session', async (req, res) => {
   }
 });
 
+// Debug endpoint - local or authenticated only
+app.get('/debug', async (req, res) => {
+  try {
+    const token = req.cookies?.session_id || req.header('X-Session-Token');
+    const isLocal = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+    if (!isLocal) {
+      const sess = await validateSession(token);
+      if (!sess) return res.status(401).json({ ok: false, message: 'Unauthorized' });
+    }
+
+    const aiStatus = await aiWorker.getStatus().catch(() => null);
+    const counts = await new Promise((resolve) => {
+      db.get('SELECT (SELECT COUNT(*) FROM posts) AS posts, (SELECT COUNT(*) FROM sessions) AS sessions, (SELECT COUNT(*) FROM autopilot) AS autopilot', [], (err, r) => {
+        if (err) return resolve({ posts: -1, sessions: -1, autopilot: -1 });
+        resolve({ posts: r.posts, sessions: r.sessions, autopilot: r.autopilot });
+      });
+    });
+
+    return res.json({ ok: true, nodeVersion: process.version, env: { GEMINI_API_KEY: !!process.env.GEMINI_API_KEY, BACKEND_PORT: process.env.BACKEND_PORT || 4000, ADMIN_EMAIL: !!process.env.ADMIN_EMAIL }, aiStatus, counts, pid: process.pid });
+  } catch (err) {
+    console.error('/debug error', err);
+    return res.status(500).json({ ok: false, message: 'debug error', error: err?.message || err });
+  }
+});
+
 // global error handler to avoid crashing and to provide better errors
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err.stack || err);
@@ -333,4 +358,9 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
+});
+
+// Simple health-check for nginx or monitoring
+app.get('/healthz', (req, res) => {
+  res.status(200).json({ ok: true, pid: process.pid, uptime: process.uptime() });
 });
