@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { AISettings } from "../types";
 
@@ -144,9 +145,13 @@ export const generateArticleContent = async (topic: string, settings: AISettings
     Requirements:
     1. Language: ${settings.language}.
     2. Tone: Professional, engaging, and authoritative.
-    3. Structure: Use HTML tags (<h1>, <h2>, <p>, <ul>, <li>) for formatting. 
+    3. Structure: 
+       - Use HTML tags for formatting.
+       - **IMPORTANT SEO RULE**: Do NOT use <h1> tags in the content. The title is already the H1. Start your content hierarchy with <h2>, then <h3>, etc.
+       - Use <ul> and <li> for lists.
+       - Use <p> for paragraphs.
     4. Length: Long-form, detailed (at least 800 words).
-    5. Include a short excerpt (summary) and a list of 3-5 relevant tags.
+    5. Include a short excerpt (meta description style summary) and a list of 3-5 relevant tags.
     6. Classify this article into one of these categories: 'التكنولوجيا', 'الذكاء الاصطناعي', 'الاقتصاد', 'الصحة', 'نمط الحياة', 'عام'.
     7. Generate a highly detailed, photorealistic, creative AI image generation prompt (IN ENGLISH) that visually represents the specific content and theme of this article.
     
@@ -158,7 +163,7 @@ export const generateArticleContent = async (topic: string, settings: AISettings
     JSON Structure:
     {
       "title": "The Title",
-      "content": "<h1>Title</h1><p>Content...</p>",
+      "content": "<h2>Introduction</h2><p>Content...</p>",
       "excerpt": "The summary...",
       "tags": ["tag1", "tag2"],
       "category": "Category Name",

@@ -9,10 +9,17 @@ interface AdSettingsPanelProps {
 export const AdSettingsPanel: React.FC<AdSettingsPanelProps> = ({ settings, onSave }) => {
   
   const handleZoneChange = (zoneKey: keyof AdSettings, field: keyof AdZone, value: any) => {
+    const currentZone = settings[zoneKey];
+
+    // Ensure we are operating on an AdZone object before spreading
+    if (typeof currentZone !== 'object' || currentZone === null) {
+      return;
+    }
+
     const updatedSettings = {
       ...settings,
       [zoneKey]: {
-        ...settings[zoneKey],
+        ...currentZone,
         [field]: value
       }
     };

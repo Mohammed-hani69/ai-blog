@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BlogPost, AdSettings, AdZone } from '../types';
+import { SEO } from './SEO';
+import { Logo } from './Logo';
 
 interface PublicBlogProps {
   posts: BlogPost[];
@@ -41,9 +43,28 @@ export const PublicBlog: React.FC<PublicBlogProps> = ({ posts, adSettings, onNav
   const recentPosts = posts.length > 0 ? posts.slice(1) : [];
   const trendingPosts = [...posts].sort((a, b) => b.views - a.views).slice(0, 4);
 
+  // WebSite Schema
+  const siteSchema = {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "مزاد بلس",
+      "url": window.location.href,
+      "potentialAction": {
+          "@type": "SearchAction",
+          "target": `${window.location.href}?q={search_term_string}`,
+          "query-input": "required name=search_term_string"
+      }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 selection:bg-blue-100 selection:text-blue-900" dir="rtl">
       
+      <SEO 
+        title="الرئيسية - أحدث المقالات التقنية" 
+        description="منصة تدوين ذكية تقدم أحدث المقالات في مجال التكنولوجيا، الذكاء الاصطناعي، الاقتصاد، والصحة."
+        schema={siteSchema}
+      />
+
       {/* Modern Sticky Header */}
       <header 
         className={`fixed w-full top-0 z-50 transition-all duration-300 border-b ${
@@ -52,13 +73,16 @@ export const PublicBlog: React.FC<PublicBlogProps> = ({ posts, adSettings, onNav
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
           <div className="flex items-center space-x-8 space-x-reverse">
-            <h1 
-                className="text-2xl md:text-3xl font-serif font-black tracking-tight cursor-pointer flex items-center gap-1" 
+            <div 
+                className="flex items-center gap-2 cursor-pointer" 
                 onClick={() => onNavigate('/')}
             >
-              <span className="text-slate-900">Omni</span>
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Blog</span>
-            </h1>
+              <Logo className="w-10 h-10 rounded-lg" />
+              <h1 className="text-2xl md:text-3xl font-serif font-black tracking-tight flex items-center gap-1">
+                <span className="text-slate-900">مزاد</span>
+                <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">بلس</span>
+              </h1>
+            </div>
             <nav className="hidden md:flex items-center space-x-1 space-x-reverse text-sm font-bold text-slate-600">
               <button onClick={() => onNavigate('/')} className="px-4 py-2 rounded-full hover:bg-slate-50 hover:text-blue-600 transition-all">الرئيسية</button>
               {['التكنولوجيا', 'الذكاء الاصطناعي', 'الاقتصاد'].map(cat => (
@@ -135,7 +159,7 @@ export const PublicBlog: React.FC<PublicBlogProps> = ({ posts, adSettings, onNav
           </section>
         ) : (
           <div className="bg-white rounded-[2.5rem] p-16 text-center mb-16 shadow-sm border border-slate-100">
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">مرحباً بك في المدونة الذكية</h2>
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">مرحباً بك في مزاد بلس</h2>
             <p className="text-slate-600">جاري إعداد المحتوى...</p>
           </div>
         )}
@@ -290,10 +314,13 @@ export const PublicBlog: React.FC<PublicBlogProps> = ({ posts, adSettings, onNav
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
                 <div className="md:col-span-1">
-                    <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-1">
-                        <span>Omni</span>
-                        <span className="text-blue-500">Blog</span>
-                    </h2>
+                    <div className="flex items-center gap-2 mb-4">
+                        <Logo className="w-12 h-12 rounded-xl" />
+                        <h2 className="text-2xl font-serif font-bold flex items-center gap-1">
+                            <span>مزاد</span>
+                            <span className="text-blue-500">بلس</span>
+                        </h2>
+                    </div>
                     <p className="text-slate-400 text-sm leading-relaxed mb-6">
                         منصة تدوين ذكية تعتمد على أحدث تقنيات الذكاء الاصطناعي لتقديم محتوى غني ودقيق يواكب تطلعات القارئ العربي.
                     </p>
@@ -301,45 +328,38 @@ export const PublicBlog: React.FC<PublicBlogProps> = ({ posts, adSettings, onNav
                         {['twitter', 'facebook', 'linkedin', 'instagram'].map(social => (
                             <a key={social} href="#" className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all">
                                 <span className="sr-only">{social}</span>
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12c0-5.523-4.477-10-10-10z"/></svg>
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 5.063 3.791 9.253 8.625 9.882V14.93H8.028v-2.93h2.597V9.782c0-2.474 1.474-3.832 3.655-3.832 1.045 0 2.152.186 2.152.186v2.368h-1.212c-1.226 0-1.609.761-1.609 1.542v1.855h2.668l-.427 2.93h-2.241v6.952C18.209 21.253 22 17.063 22 12c0-5.523-4.477-10-10-10z"/></svg>
                             </a>
                         ))}
                     </div>
                 </div>
                 
-                <div>
-                    <h3 className="font-bold text-lg mb-4">روابط سريعة</h3>
+                <div className="md:col-span-1">
+                    <h3 className="text-lg font-bold mb-6 text-white border-b border-slate-700 pb-2 inline-block">روابط سريعة</h3>
                     <ul className="space-y-3 text-sm text-slate-400">
-                        <li><button onClick={() => onNavigate('/')} className="hover:text-white transition-colors">الرئيسية</button></li>
-                        <li><button className="hover:text-white transition-colors">من نحن</button></li>
-                        <li><button className="hover:text-white transition-colors">اتصل بنا</button></li>
-                        <li><button className="hover:text-white transition-colors">سياسة الخصوصية</button></li>
+                        {['الرئيسية', 'من نحن', 'سياسة الخصوصية', 'شروط الاستخدام', 'اتصل بنا'].map(link => (
+                            <li key={link}><a href="#" className="hover:text-blue-400 transition-colors flex items-center"><span className="ml-2 text-slate-600">›</span> {link}</a></li>
+                        ))}
                     </ul>
                 </div>
 
-                <div>
-                    <h3 className="font-bold text-lg mb-4">التصنيفات</h3>
-                    <ul className="space-y-3 text-sm text-slate-400">
-                        <li><button onClick={() => onNavigateCategory('التكنولوجيا')} className="hover:text-white transition-colors">التكنولوجيا</button></li>
-                        <li><button onClick={() => onNavigateCategory('الذكاء الاصطناعي')} className="hover:text-white transition-colors">الذكاء الاصطناعي</button></li>
-                        <li><button onClick={() => onNavigateCategory('الاقتصاد')} className="hover:text-white transition-colors">الاقتصاد</button></li>
-                        <li><button onClick={() => onNavigateCategory('الصحة')} className="hover:text-white transition-colors">الصحة</button></li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h3 className="font-bold text-lg mb-4">تنويه قانوني</h3>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                        المحتوى المنشور في هذه المدونة تم إنشاؤه جزئياً أو كلياً بواسطة تقنيات الذكاء الاصطناعي تحت إشراف بشري. جميع الحقوق محفوظة.
-                    </p>
+                <div className="md:col-span-2">
+                     <h3 className="text-lg font-bold mb-6 text-white border-b border-slate-700 pb-2 inline-block">الأكثر بحثاً</h3>
+                     <div className="flex flex-wrap gap-2">
+                        {['تكنولوجيا', 'ذكاء اصطناعي', 'سيارات', 'عقارات', 'عملات رقمية', 'تجارة إلكترونية', 'صحة', 'رياضة'].map(tag => (
+                            <span key={tag} className="bg-slate-800 text-slate-400 px-3 py-1 rounded-lg text-xs hover:bg-slate-700 hover:text-white cursor-pointer transition-colors">
+                                {tag}
+                            </span>
+                        ))}
+                     </div>
                 </div>
             </div>
             
-            <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500">
-                <p>&copy; {new Date().getFullYear()} OmniBlog. جميع الحقوق محفوظة.</p>
+            <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
+                <p>&copy; {new Date().getFullYear()} جميع الحقوق محفوظة لـ مزاد بلس.</p>
                 <div className="flex space-x-6 space-x-reverse mt-4 md:mt-0">
-                    <a href="#" className="hover:text-white transition-colors">الشروط والأحكام</a>
-                    <a href="#" className="hover:text-white transition-colors">سياسة الكوكيز</a>
+                    <a href="#" className="hover:text-white transition-colors">سياسة الخصوصية</a>
+                    <a href="#" className="hover:text-white transition-colors">شروط الخدمة</a>
                 </div>
             </div>
         </div>

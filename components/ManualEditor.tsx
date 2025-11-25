@@ -97,7 +97,7 @@ export const ManualEditor: React.FC<ManualEditorProps> = ({ onPublish }) => {
                         <div className="w-3 h-3 rounded-full bg-green-400"></div>
                     </div>
                     <div className="flex-1 bg-white h-6 rounded text-center text-xs text-slate-400 leading-6 mx-4 truncate">
-                        {title ? `https://omniblog.com/posts/${title.substring(0,10)}...` : 'https://omniblog.com/new-post'}
+                        {title ? `https://mazadplus.com/posts/${title.substring(0,10)}...` : 'https://mazadplus.com/new-post'}
                     </div>
                 </div>
                 

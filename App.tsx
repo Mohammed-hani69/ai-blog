@@ -149,10 +149,11 @@ function AppContent() {
   // Dashboard Tabs
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // App Data - Initialize from LocalStorage if available
+  // App Data - Initialize from LocalStorage if available (using new 'mazadplus_' keys)
   const [posts, setPosts] = useState<BlogPost[]>(() => {
     try {
-      const savedPosts = localStorage.getItem('omniblog_posts');
+      // Changed storage key from omniblog_posts to mazadplus_posts
+      const savedPosts = localStorage.getItem('mazadplus_posts');
       if (savedPosts) {
         const parsed: BlogPost[] = JSON.parse(savedPosts);
         return parsed.map(p => ({
@@ -170,7 +171,8 @@ function AppContent() {
   const [settings, setSettings] = useState<AISettings>(initialSettings);
   const [adSettings, setAdSettings] = useState<AdSettings>(() => {
     try {
-      const savedAds = localStorage.getItem('omniblog_ads');
+      // Changed storage key from omniblog_ads to mazadplus_ads
+      const savedAds = localStorage.getItem('mazadplus_ads');
       // Merge with initialAdSettings to ensure new fields (like adsTxtContent) exist
       return savedAds ? { ...initialAdSettings, ...JSON.parse(savedAds) } : initialAdSettings;
     } catch (e) {
@@ -184,11 +186,11 @@ function AppContent() {
 
   // Persistence Effects
   useEffect(() => {
-    localStorage.setItem('omniblog_posts', JSON.stringify(posts));
+    localStorage.setItem('mazadplus_posts', JSON.stringify(posts));
   }, [posts]);
 
   useEffect(() => {
-    localStorage.setItem('omniblog_ads', JSON.stringify(adSettings));
+    localStorage.setItem('mazadplus_ads', JSON.stringify(adSettings));
   }, [adSettings]);
 
   // Router logic

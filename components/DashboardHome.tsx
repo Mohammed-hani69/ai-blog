@@ -20,7 +20,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ posts, aiState, lo
        {/* Welcome Banner */}
        <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
           <div className="relative z-10">
-            <h1 className="text-3xl font-bold font-serif mb-2">مرحباً بك في OmniBlog</h1>
+            <h1 className="text-3xl font-bold font-serif mb-2">مرحباً بك في مزاد بلس</h1>
             <p className="text-slate-300 max-w-xl text-lg">لوحة التحكم المركزية لإدارة المحتوى والذكاء الاصطناعي. نظامك يعمل بكفاءة.</p>
             <div className="mt-8 flex gap-4">
                <button 
@@ -110,4 +110,4 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ posts, aiState, lo
        </div>
     </div>
   );
-}
+};

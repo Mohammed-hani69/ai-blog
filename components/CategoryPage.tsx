@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { BlogPost, AdSettings } from '../types';
 import { AdDisplay } from './PublicBlog';
+import { SEO } from './SEO';
+import { Logo } from './Logo';
 
 interface CategoryPageProps {
   category: string;
@@ -17,15 +19,43 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({ category, posts, adS
     window.scrollTo(0, 0);
   }, [category]);
 
+  // Schema for Category/Collection Page
+  const collectionSchema = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": category,
+    "description": `أرشيف المقالات والتحليلات المتعلقة بـ ${category}`,
+    "url": window.location.href,
+    "mainEntity": {
+        "@type": "ItemList",
+        "itemListElement": categoryPosts.map((post, index) => ({
+            "@type": "ListItem",
+            "position": index + 1,
+            "url": `${window.location.origin}/?post=${post.id}`, // Simulated Permalink
+            "name": post.title
+        }))
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900" dir="rtl">
+      <SEO 
+        title={`${category} - أحدث المقالات`}
+        description={`تصفح جميع المقالات والأخبار والتحليلات المتعلقة بقسم ${category}. محتوى متجدد وشامل.`}
+        keywords={[category, 'مدونة', 'مقالات', 'تحليلات']}
+        schema={collectionSchema}
+      />
+
       {/* Header */}
       <header className="border-b border-slate-200 sticky top-0 bg-white/95 backdrop-blur-sm z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center space-x-8 space-x-reverse">
-            <h1 className="text-3xl font-serif font-bold tracking-tight cursor-pointer" onClick={() => onNavigate('/')}>
-              Omni<span className="text-blue-600">Blog</span>
-            </h1>
+             <div className="flex items-center gap-2 cursor-pointer" onClick={() => onNavigate('/')}>
+                <Logo className="w-10 h-10 rounded-lg" />
+                <h1 className="text-3xl font-serif font-bold tracking-tight text-slate-900">
+                  مزاد <span className="text-blue-600">بلس</span>
+                </h1>
+             </div>
           </div>
           <button 
              onClick={() => onNavigate('/')}

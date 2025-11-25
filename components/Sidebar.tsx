@@ -1,4 +1,5 @@
 import React from 'react';
+import { Logo } from './Logo';
 
 interface SidebarProps {
   activeTab: string;
@@ -16,10 +17,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
 
   return (
     <div className="w-64 h-screen bg-slate-900 text-white flex flex-col fixed right-0 top-0 z-50 font-sans shadow-2xl">
-      <div className="p-6 border-b border-slate-800 flex items-center space-x-2 space-x-reverse">
-         <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">O</div>
+      <div className="p-6 border-b border-slate-800 flex items-center space-x-3 space-x-reverse">
+         <Logo className="w-10 h-10 rounded-lg" />
          <div>
-            <h1 className="text-xl font-bold font-serif tracking-wide">Omni<span className="text-blue-400">Blog</span></h1>
+            <h1 className="text-xl font-bold font-serif tracking-wide text-white">مزاد <span className="text-blue-500">بلس</span></h1>
          </div>
       </div>
       

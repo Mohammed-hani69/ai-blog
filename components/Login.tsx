@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Logo } from './Logo';
 
 interface LoginProps {
   onLogin: () => void;
@@ -6,7 +7,7 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onLogin, onBack }) => {
-  const [email, setEmail] = useState('admin@omniblog.com');
+  const [email, setEmail] = useState('admin@mazadplus.com');
   const [password, setPassword] = useState('admin');
   const [error, setError] = useState('');
 
@@ -21,8 +22,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onBack }) => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 font-sans" dir="rtl">
-      <div className="mb-8 text-center cursor-pointer" onClick={onBack}>
-        <h1 className="text-4xl font-serif font-bold tracking-wider text-slate-900">Omni<span className="text-blue-600">Blog</span></h1>
+      <div className="mb-8 text-center cursor-pointer flex flex-col items-center" onClick={onBack}>
+        <Logo className="w-20 h-20 rounded-2xl mb-4" />
+        <h1 className="text-4xl font-serif font-bold tracking-wider text-slate-900">مزاد <span className="text-blue-600">بلس</span></h1>
         <p className="text-sm text-slate-500 mt-2">نظام الإدارة الذكي</p>
       </div>
       
