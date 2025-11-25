@@ -39,8 +39,7 @@
 في ملف `server/.env` أو متغيرات النظام:
 - `GEMINI_API_KEY` — مفتاح Gemini API الخاص بك (مطلوب لتوليد محتوى/صور)
 - `BACKEND_PORT` — منفذ backend (الافتراضي 4000)
-- `ADMIN_EMAIL` — بريد الأدمن (الافتراضي: admin@mazadplus.com)
-- `ADMIN_PASSWORD` — كلمة المرور للأدمن (الافتراضي: admin)
+
 
 في ملف الواجهة الأمامية `.env.local`:
 - `VITE_BACKEND_URL` — URL الخاص بالخادم (مثلاً: `http://localhost:4000`)
