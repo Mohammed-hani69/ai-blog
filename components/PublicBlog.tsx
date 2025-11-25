@@ -39,9 +39,11 @@ export const PublicBlog: React.FC<PublicBlogProps> = ({ posts, adSettings, onNav
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const featuredPost = posts.length > 0 ? posts[0] : null;
-  const recentPosts = posts.length > 0 ? posts.slice(1) : [];
-  const trendingPosts = [...posts].sort((a, b) => b.views - a.views).slice(0, 4);
+    // Only show published posts publicly
+    const published = posts.filter(p => p.status === 'published');
+    const featuredPost = published.length > 0 ? published[0] : null;
+    const recentPosts = published.length > 0 ? published.slice(1) : [];
+    const trendingPosts = [...published].sort((a, b) => b.views - a.views).slice(0, 4);
 
   // WebSite Schema
   const siteSchema = {

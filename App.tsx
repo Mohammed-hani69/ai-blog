@@ -16,6 +16,7 @@ import { AllPostsPanel } from './components/AllPostsPanel';
 import { BlogPost, AISettings, LogEntry, AIState, Comment, AdSettings, AdminProfile } from './types';
 import * as GeminiService from './services/geminiService';
 import * as StorageService from './services/storage';
+import { isBackendConfigured } from './services/backendClient';
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -116,6 +117,7 @@ function AppContent() {
   const [adSettings, setAdSettings] = useState<AdSettings>(StorageService.getAdSettings());
   const [adminProfile, setAdminProfile] = useState<AdminProfile>(StorageService.getAdminProfile());
   const [loadingData, setLoadingData] = useState(true);
+  const [backendAvailable, setBackendAvailable] = useState(false);
   
   // AI State
   const [aiState, setAiState] = useState<AIState>(AIState.IDLE);
@@ -150,7 +152,7 @@ function AppContent() {
             setLoadingData(false);
         }
     };
-    loadData();
+    loadData().then(() => setBackendAvailable(isBackendConfigured()));
   }, []);
 
   // Router logic
@@ -171,6 +173,14 @@ function AppContent() {
   const navigateToCategory = (category: string) => {
     setSelectedCategory(category);
     navigate('/category');
+  };
+
+  const slugify = (title: string) => {
+    return title
+      .toLowerCase()
+      .replace(/[^\w\u0600-\u06FF\-]+/g, '-')
+      .replace(/(^-|-$)+/g, '')
+      .replace(/-+/g, '-');
   };
 
   // --- Actions that update DB ---
@@ -198,7 +208,8 @@ function AppContent() {
     await StorageService.savePost(updatedPost);
     
     setSelectedPost(updatedPost);
-    navigate('/post');
+    const slug = slugify(post.title);
+    navigate(`/post/${post.id}/${slug}?fromApp=1`);
   };
 
   const handleAddComment = async (postId: string, author: string, content: string) => {
@@ -438,7 +449,7 @@ function AppContent() {
       return <Login onLogin={() => { setIsAuthenticated(true); navigate('/dashboard'); }} onBack={() => navigate('/')} adminProfile={adminProfile} />;
     }
     return (
-      <DashboardLayout activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => { setIsAuthenticated(false); navigate('/'); }} adminProfile={adminProfile}>
+      <DashboardLayout activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => { setIsAuthenticated(false); navigate('/'); }} adminProfile={adminProfile} supabaseAvailable={backendAvailable}>
         {activeTab === 'dashboard' && <DashboardHome posts={posts} aiState={aiState} logs={logs} onNavigate={setActiveTab} />}
         {activeTab === 'all-posts' && <AllPostsPanel posts={posts} onEdit={(p) => { setPostToEdit(p); setActiveTab('manual'); }} onDelete={handleDeletePost} />}
         {activeTab === 'analytics' && <AnalyticsDashboard posts={posts} />}
@@ -460,7 +471,7 @@ function AppContent() {
     );
   }
 
-  if (currentPath === '/post' && selectedPost) {
+  if ((currentPath && currentPath.startsWith('/post')) && selectedPost) {
     return <SinglePost post={selectedPost} adSettings={adSettings} onBack={() => navigate('/')} onNavigateCategory={navigateToCategory} onAddComment={(a, c) => handleAddComment(selectedPost.id, a, c)} onReplyComment={(id, a, c) => handleReplyComment(selectedPost.id, id, a, c)} />;
   }
 

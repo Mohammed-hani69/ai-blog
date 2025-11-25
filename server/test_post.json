@@ -1,0 +1,15 @@
+{
+  "id": "test-123",
+  "title": "Test Post",
+  "excerpt": "Test excerpt",
+  "content": "<p>Hello World</p>",
+  "imageUrl": "https://picsum.photos/seed/test/800/450",
+  "author": "Tester",
+  "date": "2025/11/25",
+  "tags": ["test"],
+  "category": "عام",
+  "status": "published",
+  "views": 0,
+  "comments": [],
+  "trafficSources": { "search": 0, "social": 0, "direct": 0, "referral": 0 }
+}

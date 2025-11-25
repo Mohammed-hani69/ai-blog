@@ -1,6 +1,10 @@
 
 import { BlogPost, AISettings, AdSettings, AdminProfile } from '../types';
 
+// Backend config
+const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL as string | undefined;
+const USE_BACKEND = !!BACKEND_URL;
+
 // Declare window.initSqlJs from the script tag
 declare global {
   interface Window {
@@ -105,6 +109,17 @@ const getDB = async () => {
 // --- Settings Operations ---
 
 export const getSettings = async (): Promise<AISettings | null> => {
+  // If backend is available, call it
+  if (USE_BACKEND && BACKEND_URL) {
+    try {
+      const r = await fetch(`${BACKEND_URL}/settings`);
+      if (!r.ok) throw new Error(`Backend returned ${r.status}`);
+      const json = await r.json();
+      return json as AISettings | null;
+    } catch (e) {
+      console.warn('Backend getSettings error', e);
+    }
+  }
   const database = await getDB();
   const res = database.exec("SELECT json FROM settings WHERE id = 1");
   if (res.length > 0 && res[0].values.length > 0) {
@@ -114,6 +129,16 @@ export const getSettings = async (): Promise<AISettings | null> => {
 };
 
 export const saveSettings = async (settings: AISettings): Promise<void> => {
+  // If backend available, POST settings
+  if (USE_BACKEND && BACKEND_URL) {
+    try {
+      await fetch(`${BACKEND_URL}/settings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
+      return;
+    } catch (e) {
+      console.warn('Backend saveSettings error', e);
+    }
+  }
+
   const database = await getDB();
   const json = JSON.stringify(settings);
   // UPSERT equivalent using REPLACE
@@ -124,6 +149,19 @@ export const saveSettings = async (settings: AISettings): Promise<void> => {
 // --- Posts Operations ---
 
 export const getPosts = async (): Promise<BlogPost[]> => {
+  // If backend is available, fetch from server
+  if (USE_BACKEND && BACKEND_URL) {
+    try {
+      const r = await fetch(`${BACKEND_URL}/posts`);
+      if (!r.ok) throw new Error(`Backend returned ${r.status}`);
+      const data = await r.json();
+      // data is an array of { id, date_sort, json: { ... } }
+      return data.map((row: any) => row.json as BlogPost);
+    } catch (e) {
+      console.warn('Backend getPosts error', e);
+    }
+  }
+
   const database = await getDB();
   // Order by date descending
   const res = database.exec("SELECT json FROM posts ORDER BY date_sort DESC");
@@ -133,7 +171,46 @@ export const getPosts = async (): Promise<BlogPost[]> => {
   return [];
 };
 
+// Get post by id
+export const getPostById = async (id: string): Promise<BlogPost | null> => {
+  if (USE_BACKEND && BACKEND_URL) {
+    try {
+      const r = await fetch(`${BACKEND_URL}/posts/${id}`);
+      if (!r.ok) return null;
+      const data = await r.json();
+      return data.json as BlogPost;
+    } catch (e) {
+      console.warn('Backend getPostById error', e);
+    }
+  }
+
+  const database = await getDB();
+  try {
+    const stmt = database.prepare('SELECT json FROM posts WHERE id = ? LIMIT 1');
+    stmt.bind([id]);
+    if (stmt.step()) {
+      const row = stmt.get();
+      // row is an array because we select a single column
+      return JSON.parse(row[0] as string);
+    }
+  } catch (e) {
+    console.warn('Local getPostById error', e);
+  }
+  return null;
+};
+
 export const savePost = async (post: BlogPost): Promise<void> => {
+  // If backend configured, send POST to server
+  if (USE_BACKEND && BACKEND_URL) {
+    try {
+      const method = 'POST';
+      await fetch(`${BACKEND_URL}/posts`, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(post) });
+      return;
+    } catch (e) {
+      console.warn('Backend savePost error', e);
+    }
+  }
+
   const database = await getDB();
   // We assume post.date is "YYYY/MM/DD" or similar string sortable, or we convert it.
   // The App currently uses LocaleDateString ('ar-EG'), which might not sort correctly strictly by string.
@@ -153,9 +230,40 @@ export const savePost = async (post: BlogPost): Promise<void> => {
 };
 
 export const deletePost = async (postId: string): Promise<void> => {
+  if (USE_BACKEND && BACKEND_URL) {
+    try {
+      await fetch(`${BACKEND_URL}/posts/${postId}`, { method: 'DELETE' });
+      return;
+    } catch (e) {
+      console.warn('Backend deletePost error', e);
+    }
+  }
+
   const database = await getDB();
   database.run("DELETE FROM posts WHERE id = ?", [postId]);
   saveDatabase();
+};
+
+// Migration helper: Migrate posts from local SQLite/LocalStorage to backend server (if configured)
+export const migrateLocalToBackend = async (): Promise<{ migrated: number } | null> => {
+  if (!USE_BACKEND || !BACKEND_URL) return null;
+  // Always read local posts directly from the local SQLite DB (don't call getPosts)
+  const database = await getDB();
+  const res = database.exec("SELECT json FROM posts ORDER BY date_sort DESC");
+  let localPosts: BlogPost[] = [];
+  if (res.length > 0) {
+    localPosts = res[0].values.map((r: any) => JSON.parse(r[0]));
+  }
+  let migrated = 0;
+  for (const p of localPosts) {
+    try {
+      const r = await fetch(`${BACKEND_URL}/posts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) });
+      if (r.ok) migrated++;
+    } catch (e) {
+      console.warn('Failed to migrate post id', p.id, e);
+    }
+  }
+  return { migrated };
 };
 
 // --- Profile & Ads (Misc Table) ---

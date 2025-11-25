@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { isBackendConfigured } from '../services/backendClient';
+import { migrateLocalToBackend } from '../services/storage';
 import { AdminProfile } from '../types';
 
 interface AdminProfileProps {
@@ -118,6 +120,28 @@ export const AdminProfilePanel: React.FC<AdminProfileProps> = ({ profile, onSave
             </p>
          </div>
       </div>
+      {isBackendConfigured() && (
+        <div className="mt-6 bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start space-x-3 space-x-reverse">
+          <div>
+            <h4 className="font-bold text-emerald-800 mb-2">قاعدة بيانات مشتركة متاحة (Supabase)</h4>
+            <p className="text-emerald-700 text-xs mb-3">يمكنك نقل المقالات المخزنة محلياً إلى Supabase لعرضها للعامة.</p>
+              <button
+              onClick={async () => {
+                const res = await migrateLocalToBackend();
+                if (res) {
+                  setMessage({ text: `تم ترحيل ${res.migrated} مقالاً إلى Supabase.`, type: 'success' });
+                } else {
+                  setMessage({ text: 'فشل الترحيل أو Supabase غير مفعّل.', type: 'error' });
+                }
+                setTimeout(() => setMessage(null), 5000);
+              }}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700"
+            >
+              ترحيل المقالات المحلية
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
