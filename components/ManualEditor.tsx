@@ -1,16 +1,43 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
+import { BlogPost } from '../types';
 
 interface ManualEditorProps {
   onPublish: (title: string, content: string, category: string) => void;
+  postToEdit?: BlogPost | null;
+  onUpdate?: (id: string, title: string, content: string, category: string) => void;
+  onCancelEdit?: () => void;
 }
 
-export const ManualEditor: React.FC<ManualEditorProps> = ({ onPublish }) => {
+export const ManualEditor: React.FC<ManualEditorProps> = ({ onPublish, postToEdit, onUpdate, onCancelEdit }) => {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('عام');
   const [content, setContent] = useState('<p>اكتب محتوى المقال هنا...</p>\n\n<h2>عنوان فرعي</h2>\n<p>تفاصيل إضافية...</p>');
   const [isPreview, setIsPreview] = useState(false);
 
   const categories = ['التكنولوجيا', 'الذكاء الاصطناعي', 'الاقتصاد', 'الصحة', 'نمط الحياة', 'عام'];
+
+  // Load post data if editing
+  useEffect(() => {
+    if (postToEdit) {
+      setTitle(postToEdit.title);
+      setCategory(postToEdit.category);
+      setContent(postToEdit.content);
+    } else {
+      // Reset if not editing (creating new)
+      setTitle('');
+      setCategory('عام');
+      setContent('<p>اكتب محتوى المقال هنا...</p>\n\n<h2>عنوان فرعي</h2>\n<p>تفاصيل إضافية...</p>');
+    }
+  }, [postToEdit]);
+
+  const handleSave = () => {
+    if (postToEdit && onUpdate) {
+        onUpdate(postToEdit.id, title, content, category);
+    } else {
+        onPublish(title, content, category);
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[calc(100vh-140px)] flex flex-col animate-fade-in">
@@ -30,13 +57,24 @@ export const ManualEditor: React.FC<ManualEditorProps> = ({ onPublish }) => {
                 معاينة (Live)
              </button>
           </div>
-          <button
-             onClick={() => onPublish(title, content, category)}
-             className="bg-green-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-green-700 transition-colors flex items-center space-x-2 space-x-reverse shadow-lg shadow-green-900/20"
-          >
-             <span>نشر المقال</span>
-             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-          </button>
+          
+          <div className="flex gap-2">
+             {postToEdit && onCancelEdit && (
+                 <button 
+                    onClick={onCancelEdit}
+                    className="text-slate-500 hover:text-slate-700 px-4 py-2.5 text-sm font-bold"
+                 >
+                    إلغاء
+                 </button>
+             )}
+             <button
+                onClick={handleSave}
+                className="bg-green-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-green-700 transition-colors flex items-center space-x-2 space-x-reverse shadow-lg shadow-green-900/20"
+             >
+                <span>{postToEdit ? 'حفظ التعديلات' : 'نشر المقال'}</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+             </button>
+          </div>
        </div>
 
        {/* Editor / Preview Area */}
@@ -110,7 +148,7 @@ export const ManualEditor: React.FC<ManualEditorProps> = ({ onPublish }) => {
                       </div>
                       <div className="border-b border-slate-100 pb-8 mb-8 flex items-center space-x-3 space-x-reverse text-sm text-slate-500">
                            <div className="w-8 h-8 rounded-full bg-slate-200"></div>
-                           <span>بواسطة: المحرر اليدوي</span>
+                           <span>بواسطة: {postToEdit ? postToEdit.author : 'المحرر اليدوي'}</span>
                            <span>•</span>
                            <span>{new Date().toLocaleDateString('ar-EG')}</span>
                       </div>

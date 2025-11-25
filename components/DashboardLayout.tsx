@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Sidebar } from './Sidebar';
 import { AdminProfile } from '../types';
@@ -15,6 +16,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ activeTab, set
   const getTabTitle = (tab: string) => {
     switch(tab) {
       case 'dashboard': return 'لوحة التحكم';
+      case 'all-posts': return 'جميع المقالات';
       case 'analytics': return 'التحليلات والبيانات';
       case 'ai-control': return 'الطيار الآلي (AI)';
       case 'manual': return 'كتابة يدوية';

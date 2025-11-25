@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { DashboardLayout } from './components/DashboardLayout';
 import { PublicBlog } from './components/PublicBlog';
 import { SinglePost } from './components/SinglePost';
@@ -11,8 +12,10 @@ import { CategoryPage } from './components/CategoryPage';
 import { AdSettingsPanel } from './components/AdSettingsPanel';
 import { AIControlPanel } from './components/AIControlPanel';
 import { AdminProfilePanel } from './components/AdminProfile';
+import { AllPostsPanel } from './components/AllPostsPanel';
 import { BlogPost, AISettings, LogEntry, AIState, Comment, AdSettings, AdminProfile } from './types';
 import * as GeminiService from './services/geminiService';
+import * as StorageService from './services/storage';
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -72,25 +75,10 @@ const initialSettings: AISettings = {
   imageQuality: '1K',
   language: 'Arabic',
   autoPublish: true,
+  imageStyle: 'صورة واقعية سينمائية، إضاءة احترافية، دقة عالية'
 };
 
-const initialAdSettings: AdSettings = {
-  header: { enabled: false, code: '' },
-  sidebar: { enabled: false, code: '' },
-  articleTop: { enabled: false, code: '' },
-  articleMiddle: { enabled: false, code: '' },
-  articleBottom: { enabled: false, code: '' },
-  footer: { enabled: false, code: '' },
-  adsTxtContent: '',
-};
-
-const initialAdminProfile: AdminProfile = {
-  name: 'المدير العام',
-  email: 'admin@mazadplus.com',
-  password: 'admin',
-};
-
-// Sample Data
+// Sample Data for initial load if DB is empty
 const SAMPLE_POSTS: BlogPost[] = [
   {
     id: '101',
@@ -104,112 +92,66 @@ const SAMPLE_POSTS: BlogPost[] = [
     category: 'الذكاء الاصطناعي',
     status: 'published',
     views: 1250,
-    comments: [
-      { id: 'c1', author: 'أحمد محمد', content: 'مقال رائع جداً، شكراً على المعلومات', date: '2024/10/06', replies: [] },
-      { id: 'c2', author: 'سارة علي', content: 'أتفق مع النقاط المطروحة بخصوص الأتمتة', date: '2024/10/06', replies: [] }
-    ],
-    trafficSources: { search: 800, social: 300, direct: 100, referral: 50 }
-  },
-  {
-    id: '102',
-    title: 'أفضل لغات البرمجة للتعلم هذا العام',
-    excerpt: 'دليل شامل للمبتدئين والمحترفين حول أكثر لغات البرمجة طلباً في سوق العمل.',
-    content: '<p>في ظل الطلب المتزايد على المطورين، تبرز لغات مثل Python و JavaScript...</p>',
-    imageUrl: 'https://picsum.photos/seed/code2/800/450',
-    author: 'المحرر التقني',
-    date: '2024/10/08',
-    tags: ['برمجة', 'تطوير', 'تعليم'],
-    category: 'التكنولوجيا',
-    status: 'published',
-    views: 890,
     comments: [],
-    trafficSources: { search: 600, social: 100, direct: 150, referral: 40 }
-  },
-  {
-    id: '103',
-    title: 'تأثير العمل عن بعد على الاقتصاد العالمي',
-    excerpt: 'تحليل اقتصادي معمق حول التحولات الجذرية في بيئات العمل وتأثيرها المباشر.',
-    content: '<p>لقد غير العمل عن بعد وجه الاقتصاد الحديث...</p>',
-    imageUrl: 'https://picsum.photos/seed/eco3/800/450',
-    author: 'الذكاء الاصطناعي',
-    date: '2024/10/10',
-    tags: ['اقتصاد', 'عمل', 'إدارة'],
-    category: 'الاقتصاد',
-    status: 'published',
-    views: 2100,
-    comments: [
-       { id: 'c3', author: 'مدير تنفيذي', content: 'تحليل دقيق للواقع الحالي', date: '2024/10/11', replies: [] }
-    ],
-    trafficSources: { search: 1200, social: 600, direct: 200, referral: 100 }
+    trafficSources: { search: 800, social: 300, direct: 100, referral: 50 }
   }
 ];
 
 function AppContent() {
   // Routing State
-  // Check URL path initially
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // Content State
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
+  const [postToEdit, setPostToEdit] = useState<BlogPost | null>(null);
   
   // Dashboard Tabs
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // App Data - Initialize from LocalStorage
-  const [posts, setPosts] = useState<BlogPost[]>(() => {
-    try {
-      const savedPosts = localStorage.getItem('mazadplus_posts');
-      if (savedPosts) {
-        const parsed: BlogPost[] = JSON.parse(savedPosts);
-        return parsed.map(p => ({
-            ...p,
-            comments: p.comments.map(c => ({...c, replies: c.replies || []})),
-            trafficSources: p.trafficSources || { search: 0, social: 0, direct: 0, referral: 0 }
-        }));
-      }
-      return SAMPLE_POSTS;
-    } catch (e) {
-      return SAMPLE_POSTS;
-    }
-  });
-
+  // App Data - Initialize with empty, then load async
+  const [posts, setPosts] = useState<BlogPost[]>([]);
   const [settings, setSettings] = useState<AISettings>(initialSettings);
-  const [adSettings, setAdSettings] = useState<AdSettings>(() => {
-    try {
-      const savedAds = localStorage.getItem('mazadplus_ads');
-      return savedAds ? { ...initialAdSettings, ...JSON.parse(savedAds) } : initialAdSettings;
-    } catch (e) {
-      return initialAdSettings;
-    }
-  });
-
-  const [adminProfile, setAdminProfile] = useState<AdminProfile>(() => {
-    try {
-      const savedProfile = localStorage.getItem('mazadplus_admin_profile');
-      return savedProfile ? JSON.parse(savedProfile) : initialAdminProfile;
-    } catch (e) {
-      return initialAdminProfile;
-    }
-  });
+  const [adSettings, setAdSettings] = useState<AdSettings>(StorageService.getAdSettings());
+  const [adminProfile, setAdminProfile] = useState<AdminProfile>(StorageService.getAdminProfile());
+  const [loadingData, setLoadingData] = useState(true);
   
   // AI State
   const [aiState, setAiState] = useState<AIState>(AIState.IDLE);
+  const [currentArticleCount, setCurrentArticleCount] = useState(0);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-
-  // Persistence Effects
+  
+  const aiStateRef = useRef(aiState);
+  
   useEffect(() => {
-    localStorage.setItem('mazadplus_posts', JSON.stringify(posts));
-  }, [posts]);
+      aiStateRef.current = aiState;
+  }, [aiState]);
 
+  // Load Data from StorageService (Supabase or Local) on Mount
   useEffect(() => {
-    localStorage.setItem('mazadplus_ads', JSON.stringify(adSettings));
-  }, [adSettings]);
+    const loadData = async () => {
+        setLoadingData(true);
+        try {
+            // Load Settings
+            const loadedSettings = await StorageService.getSettings();
+            if (loadedSettings) setSettings(loadedSettings);
 
-  useEffect(() => {
-    localStorage.setItem('mazadplus_admin_profile', JSON.stringify(adminProfile));
-  }, [adminProfile]);
+            // Load Posts
+            const loadedPosts = await StorageService.getPosts();
+            if (loadedPosts && loadedPosts.length > 0) {
+                setPosts(loadedPosts);
+            } else {
+                setPosts(SAMPLE_POSTS); // Fallback to sample if truly empty
+            }
+        } catch (error) {
+            console.error("Failed to load data", error);
+        } finally {
+            setLoadingData(false);
+        }
+    };
+    loadData();
+  }, []);
 
   // Router logic
   const navigate = (path: string) => {
@@ -218,7 +160,6 @@ function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Listen to browser back/forward buttons
   useEffect(() => {
     const handlePopState = () => {
       setCurrentPath(window.location.pathname);
@@ -232,35 +173,35 @@ function AppContent() {
     navigate('/category');
   };
 
-  // View Single Post Handler
-  const handleViewPost = (post: BlogPost) => {
+  // --- Actions that update DB ---
+
+  const handleViewPost = async (post: BlogPost) => {
     const rand = Math.random();
     let source: keyof BlogPost['trafficSources'] = 'direct';
     if (rand < 0.50) source = 'search'; 
     else if (rand < 0.80) source = 'social'; 
     else if (rand < 0.90) source = 'referral'; 
 
-    const updatedPosts = posts.map(p => 
-      p.id === post.id ? { 
-          ...p, 
-          views: p.views + 1,
-          trafficSources: {
-              ...p.trafficSources,
-              [source]: (p.trafficSources[source] || 0) + 1
-          }
-      } : p
-    );
-    setPosts(updatedPosts);
+    const updatedPost = { 
+        ...post, 
+        views: post.views + 1,
+        trafficSources: {
+            ...post.trafficSources,
+            [source]: (post.trafficSources[source] || 0) + 1
+        }
+    };
+
+    // Optimistic Update
+    setPosts(prev => prev.map(p => p.id === post.id ? updatedPost : p));
     
-    const updatedPost = updatedPosts.find(p => p.id === post.id);
-    if (updatedPost) {
-      setSelectedPost(updatedPost);
-      navigate('/post');
-    }
+    // Async Save
+    await StorageService.savePost(updatedPost);
+    
+    setSelectedPost(updatedPost);
+    navigate('/post');
   };
 
-  // Handle Adding Root Comment
-  const handleAddComment = (postId: string, author: string, content: string) => {
+  const handleAddComment = async (postId: string, author: string, content: string) => {
     const newComment: Comment = {
       id: Date.now().toString(),
       author,
@@ -269,23 +210,20 @@ function AppContent() {
       replies: []
     };
 
-    setPosts(prevPosts => {
-      const updated = prevPosts.map(p => 
-        p.id === postId ? { ...p, comments: [newComment, ...p.comments] } : p
-      );
-      return updated;
-    });
+    const targetPost = posts.find(p => p.id === postId);
+    if (!targetPost) return;
 
-    if (selectedPost && selectedPost.id === postId) {
-      setSelectedPost(prev => prev ? ({
-        ...prev,
-        comments: [newComment, ...prev.comments]
-      }) : null);
-    }
+    const updatedPost = { ...targetPost, comments: [newComment, ...targetPost.comments] };
+
+    // Optimistic
+    setPosts(prev => prev.map(p => p.id === postId ? updatedPost : p));
+    if (selectedPost?.id === postId) setSelectedPost(updatedPost);
+
+    // Save
+    await StorageService.savePost(updatedPost);
   };
 
-  // Handle Reply to Comment
-  const handleReplyComment = (postId: string, parentCommentId: string, author: string, content: string) => {
+  const handleReplyComment = async (postId: string, parentCommentId: string, author: string, content: string) => {
     const newReply: Comment = {
       id: Date.now().toString(),
       author,
@@ -306,63 +244,47 @@ function AppContent() {
         });
     };
 
-    setPosts(prevPosts => {
-      const updated = prevPosts.map(p => 
-        p.id === postId ? { ...p, comments: addReplyRecursively(p.comments) } : p
-      );
-      return updated;
-    });
+    const targetPost = posts.find(p => p.id === postId);
+    if (!targetPost) return;
 
-    if (selectedPost && selectedPost.id === postId) {
-        setSelectedPost(prev => {
-            if(!prev) return null;
-            return {
-                ...prev,
-                comments: addReplyRecursively(prev.comments)
-            }
-        });
-    }
+    const updatedPost = { ...targetPost, comments: addReplyRecursively(targetPost.comments) };
+
+    // Optimistic
+    setPosts(prev => prev.map(p => p.id === postId ? updatedPost : p));
+    if (selectedPost?.id === postId) setSelectedPost(updatedPost);
+
+    // Save
+    await StorageService.savePost(updatedPost);
   };
 
-  // Helper to add log
   const addLog = (message: string, type: LogEntry['type'] = 'info') => {
     const now = new Date().toLocaleTimeString([], { hour12: false });
     setLogs(prev => [...prev, { timestamp: now, message, type }]);
   };
 
-  // AI Agent Logic
-  const runAIAgent = async () => {
-    if (aiState !== AIState.IDLE && aiState !== AIState.COMPLETE && aiState !== AIState.ERROR) return;
+  // --- AI Logic ---
 
+  const generateSingleArticle = async (index: number) => {
+    addLog(`بدء توليد المقال رقم (${index + 1})...`, 'system');
     setAiState(AIState.ANALYZING_TRENDS);
-    addLog('بدء دورة الطيار الآلي...', 'system');
-    addLog(`تحليل تريندات Google Search للمجال: ${settings.niche}`);
-
+    
     try {
-      // 1. Trend Analysis
       const { topic, analysis } = await GeminiService.analyzeTrendsAndPickTopic(settings);
       addLog(`تم تحديد الموضوع: ${topic}`, 'success');
-      addLog(`تحليل التريند: ${analysis}`, 'info');
 
-      // 2. Writing Content
       setAiState(AIState.WRITING_CONTENT);
       addLog('جاري كتابة المقال (Gemini 2.5 Flash)...', 'system');
       const article = await GeminiService.generateArticleContent(topic, settings);
-      addLog('تم إنشاء المحتوى النصي بنجاح.', 'success');
-
-      // 3. Generating Image
+      
       setAiState(AIState.GENERATING_IMAGE);
-      addLog('جاري توليد الصورة الحصرية (Gemini 3 Pro Image / Nano Banana)...', 'system');
-      let imageUrl = 'https://picsum.photos/800/450'; // Fallback
+      addLog('جاري توليد الصورة...', 'system');
+      let imageUrl = 'https://picsum.photos/800/450';
       try {
          imageUrl = await GeminiService.generateBlogImage(article.imagePrompt, settings.imageQuality);
-         addLog('تم توليد صورة عالية الدقة بنجاح.', 'success');
       } catch (imgError) {
          addLog('فشل توليد الصورة، استخدام صورة احتياطية.', 'error');
-         console.error(imgError);
       }
 
-      // 4. Publishing
       setAiState(AIState.PUBLISHING);
       const newPost: BlogPost = {
         id: Date.now().toString(),
@@ -380,24 +302,60 @@ function AppContent() {
         trafficSources: { search: 0, social: 0, direct: 0, referral: 0 }
       };
 
+      // Save to DB and State
+      await StorageService.savePost(newPost);
       setPosts(prev => [newPost, ...prev]);
-      addLog(`تم نشر المقال: "${newPost.title}"`, 'success');
       
-      setAiState(AIState.COMPLETE);
-      setTimeout(() => setAiState(AIState.IDLE), 5000);
+      addLog(`تم نشر المقال: "${newPost.title}"`, 'success');
 
     } catch (error: any) {
       console.error(error);
-      addLog(`حدث خطأ: ${error.message}`, 'error');
-      setAiState(AIState.ERROR);
+      addLog(`خطأ: ${error.message}`, 'error');
     }
   };
 
-  // Manual Publish Handler
-  const handleManualPublish = (title: string, content: string, category: string) => {
+  const runAutopilotSequence = async () => {
+    if (aiStateRef.current !== AIState.IDLE && aiStateRef.current !== AIState.COMPLETE && aiStateRef.current !== AIState.ERROR) {
+        addLog('العملية جارية بالفعل.', 'info');
+        return;
+    }
+    
+    setAiState(AIState.IDLE);
+    setLogs([]);
+    setCurrentArticleCount(0);
+    const totalToGenerate = settings.articlesPerDay;
+    
+    addLog(`بدء دورة الطيار الآلي (Postgres DB Active). الهدف: ${totalToGenerate} مقالات.`, 'system');
+
+    for (let i = 0; i < totalToGenerate; i++) {
+        setCurrentArticleCount(i + 1);
+        await generateSingleArticle(i);
+
+        if (i < totalToGenerate - 1) {
+            setAiState(AIState.WAITING);
+            addLog(`انتظار قصير قبل المقال التالي...`, 'system');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+    }
+
+    setAiState(AIState.COMPLETE);
+    addLog('تم إكمال المهمة بنجاح!', 'success');
+    setTimeout(() => { setAiState(AIState.IDLE); setCurrentArticleCount(0); }, 8000);
+  };
+
+  const handleSaveSettingsAndStart = async () => {
+      // Save settings to DB first
+      await StorageService.saveSettings(settings);
+      addLog('تم حفظ الإعدادات في قاعدة البيانات (Supabase/Local).', 'success');
+      // Start logic
+      runAutopilotSequence();
+  };
+
+  // Manual Publish
+  const handleManualPublish = async (title: string, content: string, category: string) => {
     const newPost: BlogPost = {
       id: Date.now().toString(),
-      title: title || "مقال جديد (بدون عنوان)",
+      title: title || "مقال جديد",
       excerpt: content.replace(/<[^>]*>?/gm, '').substring(0, 150) + "...",
       content: content,
       imageUrl: 'https://picsum.photos/800/450', 
@@ -411,83 +369,108 @@ function AppContent() {
       trafficSources: { search: 0, social: 0, direct: 0, referral: 0 }
     };
 
+    await StorageService.savePost(newPost);
     setPosts(prev => [newPost, ...prev]);
-    addLog(`تم نشر المقال اليدوي بنجاح: ${newPost.title}`, 'success');
+    addLog(`تم نشر المقال اليدوي: ${newPost.title}`, 'success');
     setActiveTab('dashboard');
   };
 
+  const handleDeletePost = async (postId: string) => {
+    await StorageService.deletePost(postId);
+    setPosts(prev => prev.filter(p => p.id !== postId));
+    addLog(`تم حذف المقال (ID: ${postId})`, 'success');
+  };
+
+  const handleUpdatePost = async (id: string, title: string, content: string, category: string) => {
+    // Find existing to preserve other fields
+    const existing = posts.find(p => p.id === id);
+    if (!existing) return;
+
+    const updated = {
+        ...existing,
+        title,
+        content,
+        category,
+        excerpt: content.replace(/<[^>]*>?/gm, '').substring(0, 150) + "...",
+        tags: [...existing.tags.filter(t => t !== existing.category), category]
+    };
+
+    await StorageService.savePost(updated);
+    setPosts(prev => prev.map(p => p.id === id ? updated : p));
+    
+    addLog(`تم تحديث المقال: "${title}"`, 'success');
+    setPostToEdit(null);
+    setActiveTab('all-posts');
+  };
+
+  // Settings Updates
+  const updateAdSettings = (newSettings: AdSettings) => {
+      setAdSettings(newSettings);
+      StorageService.saveAdSettings(newSettings);
+  };
+
+  const updateAdminProfile = (newProfile: AdminProfile) => {
+      setAdminProfile(newProfile);
+      StorageService.saveAdminProfile(newProfile);
+  };
+
   // --- Views ---
-  
-  // 1. Login
-  if (currentPath === '/login') {
-    return <Login 
-      onLogin={() => { setIsAuthenticated(true); navigate('/dashboard'); }} 
-      onBack={() => navigate('/')} 
-      adminProfile={adminProfile}
-    />;
+  if (loadingData) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-600" dir="rtl">
+              <div className="text-center">
+                  <svg className="animate-spin h-10 w-10 text-blue-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p>جاري تحميل البيانات من قاعدة البيانات...</p>
+              </div>
+          </div>
+      );
   }
 
-  // 2. Dashboard
+  if (currentPath === '/login') {
+    return <Login onLogin={() => { setIsAuthenticated(true); navigate('/dashboard'); }} onBack={() => navigate('/')} adminProfile={adminProfile} />;
+  }
+
   if (currentPath === '/dashboard') {
     if (!isAuthenticated) {
       return <Login onLogin={() => { setIsAuthenticated(true); navigate('/dashboard'); }} onBack={() => navigate('/')} adminProfile={adminProfile} />;
     }
     return (
-      <DashboardLayout 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        onLogout={() => { setIsAuthenticated(false); navigate('/'); }}
-        adminProfile={adminProfile}
-      >
+      <DashboardLayout activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => { setIsAuthenticated(false); navigate('/'); }} adminProfile={adminProfile}>
         {activeTab === 'dashboard' && <DashboardHome posts={posts} aiState={aiState} logs={logs} onNavigate={setActiveTab} />}
+        {activeTab === 'all-posts' && <AllPostsPanel posts={posts} onEdit={(p) => { setPostToEdit(p); setActiveTab('manual'); }} onDelete={handleDeletePost} />}
         {activeTab === 'analytics' && <AnalyticsDashboard posts={posts} />}
-        {activeTab === 'ads' && <AdSettingsPanel settings={adSettings} onSave={setAdSettings} />}
+        {activeTab === 'ads' && <AdSettingsPanel settings={adSettings} onSave={updateAdSettings} />}
         {activeTab === 'ai-control' && (
            <AIControlPanel 
               settings={settings} 
               onSettingsChange={setSettings} 
-              onStartAI={runAIAgent} 
+              onStartAI={runAutopilotSequence}
+              onSaveAndStart={handleSaveSettingsAndStart}
               aiState={aiState} 
-              logs={logs} 
+              logs={logs}
+              progress={{ current: currentArticleCount, total: settings.articlesPerDay }}
            />
         )}
-        {activeTab === 'manual' && <ManualEditor onPublish={handleManualPublish} />}
-        {activeTab === 'profile' && <AdminProfilePanel profile={adminProfile} onSave={setAdminProfile} />}
+        {activeTab === 'manual' && <ManualEditor onPublish={handleManualPublish} postToEdit={postToEdit} onUpdate={handleUpdatePost} onCancelEdit={() => { setPostToEdit(null); setActiveTab('all-posts'); }} />}
+        {activeTab === 'profile' && <AdminProfilePanel profile={adminProfile} onSave={updateAdminProfile} />}
       </DashboardLayout>
     );
   }
 
-  // 3. Single Post
   if (currentPath === '/post' && selectedPost) {
-    return <SinglePost 
-      post={selectedPost} 
-      adSettings={adSettings}
-      onBack={() => navigate('/')} 
-      onNavigateCategory={navigateToCategory}
-      onAddComment={(author, content) => handleAddComment(selectedPost.id, author, content)}
-      onReplyComment={(commentId, author, content) => handleReplyComment(selectedPost.id, commentId, author, content)}
-    />;
+    return <SinglePost post={selectedPost} adSettings={adSettings} onBack={() => navigate('/')} onNavigateCategory={navigateToCategory} onAddComment={(a, c) => handleAddComment(selectedPost.id, a, c)} onReplyComment={(id, a, c) => handleReplyComment(selectedPost.id, id, a, c)} />;
   }
 
-  // 4. Category Page
   if (currentPath === '/category' && selectedCategory) {
-    return <CategoryPage 
-       category={selectedCategory} 
-       posts={posts} 
-       adSettings={adSettings}
-       onNavigate={navigate} 
-       onViewPost={handleViewPost} 
-    />
+    return <CategoryPage category={selectedCategory} posts={posts} adSettings={adSettings} onNavigate={navigate} onViewPost={handleViewPost} />
   }
 
-  // 5. Public Blog (Home)
   return <PublicBlog posts={posts} adSettings={adSettings} onNavigate={navigate} onViewPost={handleViewPost} onNavigateCategory={navigateToCategory} />;
 }
 
 export default function App() {
-  return (
-    <ErrorBoundary>
-      <AppContent />
-    </ErrorBoundary>
-  );
+  return <ErrorBoundary><AppContent /></ErrorBoundary>;
 }

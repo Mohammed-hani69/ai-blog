@@ -153,7 +153,8 @@ export const generateArticleContent = async (topic: string, settings: AISettings
     4. Length: Long-form, detailed (at least 800 words).
     5. Include a short excerpt (meta description style summary) and a list of 3-5 relevant tags.
     6. Classify this article into one of these categories: 'التكنولوجيا', 'الذكاء الاصطناعي', 'الاقتصاد', 'الصحة', 'نمط الحياة', 'عام'.
-    7. Generate a highly detailed, photorealistic, creative AI image generation prompt (IN ENGLISH) that visually represents the specific content and theme of this article.
+    7. Generate a highly detailed, creative AI image generation prompt (IN ENGLISH) that visually represents the specific content.
+       - **IMAGE STYLE INSTRUCTION**: The user has requested the image style be: "${settings.imageStyle || 'Professional, cinematic, photorealistic'}". Ensure the prompt strictly adheres to this style.
     
     CRITICAL OUTPUT INSTRUCTION:
     - Return RAW JSON only.
@@ -190,7 +191,7 @@ export const generateArticleContent = async (topic: string, settings: AISettings
   if (!data.content) data.content = `<p>${topic}</p>`;
   if (!data.excerpt) data.excerpt = "ملخص المقال غير متوفر.";
   if (!data.category) data.category = "عام";
-  if (!data.imagePrompt) data.imagePrompt = `A professional, cinematic image representing ${topic}`;
+  if (!data.imagePrompt) data.imagePrompt = `A professional, cinematic image representing ${topic}, style: ${settings.imageStyle}`;
 
   if (!Array.isArray(data.tags)) {
     data.tags = typeof data.tags === 'string' ? data.tags.split(',') : ['عام'];

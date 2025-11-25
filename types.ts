@@ -1,3 +1,4 @@
+
 export interface Comment {
   id: string;
   author: string;
@@ -34,6 +35,7 @@ export interface AISettings {
   imageQuality: '1K' | '2K' | '4K';
   language: 'Arabic' | 'English';
   autoPublish: boolean;
+  imageStyle: string; // New field for image generation instructions
 }
 
 export interface AdZone {
@@ -70,6 +72,7 @@ export enum AIState {
   WRITING_CONTENT = 'WRITING_CONTENT',
   GENERATING_IMAGE = 'GENERATING_IMAGE',
   PUBLISHING = 'PUBLISHING',
+  WAITING = 'WAITING', // New state for scheduling delay
   COMPLETE = 'COMPLETE',
   ERROR = 'ERROR'
 }

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { AISettings, AIState } from '../types';
 import { AIStatusTerminal } from './AIStatusTerminal';
@@ -6,54 +7,69 @@ interface AIControlPanelProps {
   settings: AISettings;
   onSettingsChange: (settings: AISettings) => void;
   onStartAI: () => void;
+  onSaveAndStart: () => void;
   aiState: AIState;
   logs: any[];
+  progress?: { current: number; total: number };
 }
 
 export const AIControlPanel: React.FC<AIControlPanelProps> = ({
   settings,
   onSettingsChange,
-  onStartAI,
+  onSaveAndStart,
   aiState,
-  logs
+  logs,
+  progress
 }) => {
   const handleChange = (field: keyof AISettings, value: any) => {
     onSettingsChange({ ...settings, [field]: value });
   };
 
   const isRunning = aiState !== AIState.IDLE && aiState !== AIState.COMPLETE && aiState !== AIState.ERROR;
+  const isWaiting = aiState === AIState.WAITING;
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
            <h2 className="text-2xl font-bold text-slate-800">الطيار الآلي (AI Autopilot)</h2>
-           <p className="text-slate-500 mt-1">قم بإعداد الوكيل الذكي لتوليد المحتوى ونشره تلقائياً.</p>
+           <p className="text-slate-500 mt-1">قم بإعداد الوكيل الذكي لجدولة ونشر المحتوى تلقائياً على مدار اليوم.</p>
         </div>
-        <button
-          onClick={onStartAI}
-          disabled={isRunning}
-          className={`px-6 py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center space-x-2 space-x-reverse ${
-            isRunning 
-              ? 'bg-slate-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-blue-900/30 hover:-translate-y-1'
-          }`}
-        >
-          {isRunning ? (
-            <>
-               <svg className="animate-spin h-5 w-5 text-white ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-               </svg>
-               <span>جاري العمل...</span>
-            </>
-          ) : (
-            <>
-               <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-               <span>تشغيل المولد الآن</span>
-            </>
+        <div className="flex items-center gap-4">
+          {isRunning && progress && (
+              <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-bold text-sm border border-blue-100">
+                  جاري معالجة المقال {progress.current} من {progress.total}
+              </div>
           )}
-        </button>
+          <button
+            onClick={onSaveAndStart}
+            disabled={isRunning}
+            className={`px-6 py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center space-x-2 space-x-reverse ${
+              isRunning 
+                ? 'bg-slate-400 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:shadow-green-900/30 hover:-translate-y-1'
+            }`}
+          >
+            {isRunning ? (
+              <>
+                {isWaiting ? (
+                   <svg className="w-5 h-5 ml-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                ) : (
+                   <svg className="animate-spin h-5 w-5 text-white ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                   </svg>
+                )}
+                 <span>{isWaiting ? 'انتظار الموعد...' : 'جاري العمل...'}</span>
+              </>
+            ) : (
+              <>
+                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                 <span>حفظ الإعدادات وبدء التشغيل</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -84,9 +100,44 @@ export const AIControlPanel: React.FC<AIControlPanelProps> = ({
                  <textarea 
                     value={settings.keywords}
                     onChange={(e) => handleChange('keywords', e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none"
+                    className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none h-20 resize-none"
                     placeholder="مثال: تعلم الآلة، الروبوتات، مستقبل العمل..."
                  />
+              </div>
+
+              <div className="col-span-2">
+                 <label className="block text-sm font-bold text-slate-700 mb-2">تعليمات نمط الصور (Image Instructions)</label>
+                 <textarea 
+                    value={settings.imageStyle}
+                    onChange={(e) => handleChange('imageStyle', e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none h-20 resize-none"
+                    placeholder="مثال: صورة واقعية بجودة سينمائية 4K، إضاءة درامية، ألوان زاهية..."
+                 />
+                 <p className="text-xs text-slate-400 mt-1">سيقوم الذكاء الاصطناعي باتباع هذا النمط عند توليد الصور لكل مقال.</p>
+              </div>
+              
+              <div className="col-span-2 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                 <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-bold text-slate-700">عدد المقالات في اليوم</label>
+                    <span className="text-xl font-bold text-blue-600 bg-white px-3 py-1 rounded shadow-sm border border-blue-100">{settings.articlesPerDay}</span>
+                 </div>
+                 <input 
+                    type="range" 
+                    min="1" 
+                    max="10" 
+                    step="1"
+                    value={settings.articlesPerDay}
+                    onChange={(e) => handleChange('articlesPerDay', parseInt(e.target.value))}
+                    className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                 />
+                 <div className="flex justify-between text-xs text-slate-400 mt-2">
+                     <span>1 مقال</span>
+                     <span>5 مقالات</span>
+                     <span>10 مقالات</span>
+                 </div>
+                 <p className="text-xs text-slate-500 mt-3">
+                     سيقوم النظام بتوزيع هذه المقالات على مدار 24 ساعة (مثلاً: مقال كل {(24 / settings.articlesPerDay).toFixed(1)} ساعة).
+                 </p>
               </div>
 
               <div>
@@ -139,7 +190,7 @@ export const AIControlPanel: React.FC<AIControlPanelProps> = ({
               <AIStatusTerminal logs={logs} currentState={aiState} />
               
               <div className="mt-4 bg-blue-50 border border-blue-100 rounded-lg p-4 text-xs text-blue-800 leading-relaxed">
-                 <strong>ملاحظة:</strong> يستخدم هذا النظام نموذج Gemini 2.5 Flash لتحليل التريند وكتابة المحتوى، ونموذج Gemini 3 Pro Image (Nano Banana) لتوليد صور عالية الدقة.
+                 <strong>ملاحظة:</strong> سيتم جدولة المقالات وتوزيعها زمنياً لضمان نشر مستمر.
               </div>
            </div>
         </div>
