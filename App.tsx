@@ -102,7 +102,7 @@ function AppContent() {
   // Routing State
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   
   // Content State
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
@@ -123,6 +123,7 @@ function AppContent() {
   const [aiState, setAiState] = useState<AIState>(AIState.IDLE);
   const [currentArticleCount, setCurrentArticleCount] = useState(0);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [autopilotStatus, setAutopilotStatus] = useState<any>(null);
   
   const aiStateRef = useRef(aiState);
   
@@ -152,8 +153,79 @@ function AppContent() {
             setLoadingData(false);
         }
     };
-    loadData().then(() => setBackendAvailable(isBackendConfigured()));
+    loadData().then(async () => {
+        setBackendAvailable(isBackendConfigured());
+        // If backend configured, get autopilot status
+        if (isBackendConfigured()) {
+           const st = await StorageService.getAutopilotStatus();
+           setAutopilotStatus(st);
+           if (st?.running) {
+         setAiState(AIState.WAITING);
+           }
+        }
+          // If backend configured, check server session
+          if (isBackendConfigured()) {
+             const serverSession = await StorageService.getServerSession();
+             if (serverSession && serverSession.loggedIn) {
+               setIsAuthenticated(true);
+             } else {
+               // fallback: local auth session
+               const localAuth = StorageService.getAuthSession();
+               setIsAuthenticated(localAuth);
+             }
+          }
+    });
+
+    // Poll autopilot status if backend available
+    let poll: any = null;
+    if (isBackendConfigured()) {
+      poll = setInterval(async () => {
+         const st = await StorageService.getAutopilotStatus();
+         if (st) {
+           setAutopilotStatus(st);
+           if (st?.running) setAiState(AIState.WAITING);
+           // if autopilot status has logs, append new ones
+           if (Array.isArray(st.logs) && st.logs.length > 0) {
+             setLogs(prev => {
+               const existingMsgs = new Set(prev.map(l => l.message + l.timestamp));
+               const newEntries = st.logs
+                 .map((x: any) => ({ timestamp: new Date(x.timestamp).toLocaleTimeString([], { hour12: false }), message: x.message, type: 'system' as const }))
+                 .filter((l: any) => !existingMsgs.has(l.message + l.timestamp));
+               return [...prev, ...newEntries];
+             });
+           }
+         }
+      }, 30000);
+    }
+    return () => { if (poll) clearInterval(poll); };
   }, []);
+
+  // SSE connection to receive autopilot updates from backend
+  useEffect(() => {
+    if (!isBackendConfigured() || !isAuthenticated) return;
+    const url = `${(import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:4000'}/autopilot/events`;
+    const es = new EventSource(url, { withCredentials: true } as any);
+    es.onmessage = (ev) => {
+      try {
+        const payload = JSON.parse(ev.data);
+        if (payload?.type === 'status') {
+          setAutopilotStatus(payload.data);
+        } else {
+          // generic update (e.g., logs/state)
+          if (payload?.logs) {
+            setLogs(prev => [...prev, ...payload.logs.map((l: any) => ({ timestamp: new Date(l.timestamp).toLocaleTimeString([], { hour12: false }), message: l.message, type: 'system' }))]);
+          } else if (payload?.message) {
+            setLogs(prev => [...prev, { timestamp: new Date().toLocaleTimeString([], { hour12: false }), message: payload.message, type: 'system' }]);
+          }
+          if (payload?.running !== undefined) setAutopilotStatus(payload);
+        }
+      } catch (e) {
+        console.warn('SSE parse error', e);
+      }
+    };
+    es.onerror = (err) => { console.warn('SSE error', err); es.close(); };
+    return () => { es.close(); };
+  }, [backendAvailable, isAuthenticated]);
 
   // Router logic
   const navigate = (path: string) => {
@@ -358,8 +430,35 @@ function AppContent() {
       // Save settings to DB first
       await StorageService.saveSettings(settings);
       addLog('تم حفظ الإعدادات في قاعدة البيانات (Supabase/Local).', 'success');
-      // Start logic
-      runAutopilotSequence();
+      // If backend configured, request server to start autopilot
+      if (isBackendConfigured()) {
+        try {
+           const r = await StorageService.startAutopilot(settings);
+           setAutopilotStatus(r?.state || null);
+           addLog('تم بدء الطيار الآلي على الخادم.', 'success');
+           setAiState(AIState.WAITING);
+        } catch (e) {
+           addLog('فشل بدء الطيار الآلي على الخادم، تجربة التشغيل من العميل.', 'error');
+           runAutopilotSequence();
+        }
+      } else {
+        // Start on client side as fallback
+        runAutopilotSequence();
+      }
+  };
+
+  const handleStopAutopilot = async () => {
+      if (isBackendConfigured()) {
+        await StorageService.stopAutopilot();
+        setAutopilotStatus(null);
+        addLog('تم إيقاف الطيار الآلي على الخادم.', 'system');
+        setAiState(AIState.IDLE);
+        setCurrentArticleCount(0);
+      } else {
+        // Client-run logic would need to cancel local loop -- for now we just set state
+        setAiState(AIState.IDLE);
+        addLog('تم إيقاف الطيار الآلي محلياً.', 'system');
+      }
   };
 
   // Manual Publish
@@ -441,7 +540,7 @@ function AppContent() {
   }
 
   if (currentPath === '/login') {
-    return <Login onLogin={() => { setIsAuthenticated(true); navigate('/dashboard'); }} onBack={() => navigate('/')} adminProfile={adminProfile} />;
+    return <Login onLogin={(remember: boolean) => { setIsAuthenticated(true); if (!isBackendConfigured()) StorageService.saveAuthSession(remember); navigate('/dashboard'); }} onBack={() => navigate('/')} adminProfile={adminProfile} />;
   }
 
   if (currentPath === '/dashboard') {
@@ -449,7 +548,14 @@ function AppContent() {
       return <Login onLogin={() => { setIsAuthenticated(true); navigate('/dashboard'); }} onBack={() => navigate('/')} adminProfile={adminProfile} />;
     }
     return (
-      <DashboardLayout activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => { setIsAuthenticated(false); navigate('/'); }} adminProfile={adminProfile} supabaseAvailable={backendAvailable}>
+      <DashboardLayout activeTab={activeTab} setActiveTab={setActiveTab} onLogout={async () => { 
+          setIsAuthenticated(false); 
+          if (isBackendConfigured()) {
+            try { await StorageService.serverLogout(); } catch(e) {}
+          }
+          StorageService.clearAuthSession(); 
+          navigate('/'); 
+        }} adminProfile={adminProfile} supabaseAvailable={backendAvailable}>
         {activeTab === 'dashboard' && <DashboardHome posts={posts} aiState={aiState} logs={logs} onNavigate={setActiveTab} />}
         {activeTab === 'all-posts' && <AllPostsPanel posts={posts} onEdit={(p) => { setPostToEdit(p); setActiveTab('manual'); }} onDelete={handleDeletePost} />}
         {activeTab === 'analytics' && <AnalyticsDashboard posts={posts} />}
@@ -460,9 +566,13 @@ function AppContent() {
               onSettingsChange={setSettings} 
               onStartAI={runAutopilotSequence}
               onSaveAndStart={handleSaveSettingsAndStart}
+              onStopAI={handleStopAutopilot}
               aiState={aiState} 
               logs={logs}
               progress={{ current: currentArticleCount, total: settings.articlesPerDay }}
+              autopilotStatus={autopilotStatus}
+             isAuthenticated={isAuthenticated}
+             backendAvailable={backendAvailable}
            />
         )}
         {activeTab === 'manual' && <ManualEditor onPublish={handleManualPublish} postToEdit={postToEdit} onUpdate={handleUpdatePost} onCancelEdit={() => { setPostToEdit(null); setActiveTab('all-posts'); }} />}

@@ -8,18 +8,25 @@ interface AIControlPanelProps {
   onSettingsChange: (settings: AISettings) => void;
   onStartAI: () => void;
   onSaveAndStart: () => void;
+   onStopAI?: () => void;
+   autopilotStatus?: any;
   aiState: AIState;
   logs: any[];
   progress?: { current: number; total: number };
+   isAuthenticated?: boolean;
+   backendAvailable?: boolean;
 }
 
 export const AIControlPanel: React.FC<AIControlPanelProps> = ({
   settings,
   onSettingsChange,
-  onSaveAndStart,
+   onSaveAndStart,
+   onStopAI,
   aiState,
   logs,
-  progress
+   progress,
+   autopilotStatus
+   , isAuthenticated = false, backendAvailable = false
 }) => {
   const handleChange = (field: keyof AISettings, value: any) => {
     onSettingsChange({ ...settings, [field]: value });
@@ -35,15 +42,16 @@ export const AIControlPanel: React.FC<AIControlPanelProps> = ({
            <h2 className="text-2xl font-bold text-slate-800">الطيار الآلي (AI Autopilot)</h2>
            <p className="text-slate-500 mt-1">قم بإعداد الوكيل الذكي لجدولة ونشر المحتوى تلقائياً على مدار اليوم.</p>
         </div>
-        <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4">
           {isRunning && progress && (
               <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-bold text-sm border border-blue-100">
                   جاري معالجة المقال {progress.current} من {progress.total}
               </div>
           )}
-          <button
+               <div className="flex items-center gap-2">
+               <button
             onClick={onSaveAndStart}
-            disabled={isRunning}
+            disabled={isRunning || (backendAvailable && !isAuthenticated)}
             className={`px-6 py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center space-x-2 space-x-reverse ${
               isRunning 
                 ? 'bg-slate-400 cursor-not-allowed' 
@@ -69,6 +77,10 @@ export const AIControlPanel: React.FC<AIControlPanelProps> = ({
               </>
             )}
           </button>
+               {isRunning && onStopAI && (
+                  <button onClick={onStopAI} className="px-4 py-2 rounded-md bg-red-600 text-white text-sm hover:bg-red-700">إيقاف الطيار</button>
+               )}
+               </div>
         </div>
       </div>
 
@@ -188,6 +200,13 @@ export const AIControlPanel: React.FC<AIControlPanelProps> = ({
            <div className="sticky top-24">
               <h3 className="font-bold text-lg text-slate-800 mb-4">سجل العمليات</h3>
               <AIStatusTerminal logs={logs} currentState={aiState} />
+                     {autopilotStatus && autopilotStatus.running && (
+                        <div className="mt-3 text-xs text-slate-600">
+                           <div><strong>الحالة:</strong> قيد التشغيل</div>
+                           <div className="mt-1">المنشورات اليوم: {autopilotStatus.articlesGeneratedToday || 0}/{autopilotStatus.articlesPerDay || '?'}</div>
+                           {autopilotStatus.nextRunTs && <div className="mt-1">الموعد التالي: {new Date(autopilotStatus.nextRunTs).toLocaleString('ar-EG')}</div>}
+                        </div>
+                     )}
               
               <div className="mt-4 bg-blue-50 border border-blue-100 rounded-lg p-4 text-xs text-blue-800 leading-relaxed">
                  <strong>ملاحظة:</strong> سيتم جدولة المقالات وتوزيعها زمنياً لضمان نشر مستمر.

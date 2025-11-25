@@ -146,6 +146,50 @@ export const saveSettings = async (settings: AISettings): Promise<void> => {
   saveDatabase();
 };
 
+// Autopilot control helpers (server-backed if available)
+export const startAutopilot = async (settings: AISettings): Promise<any> => {
+  if (USE_BACKEND && BACKEND_URL) {
+    try {
+      const r = await fetch(`${BACKEND_URL}/autopilot/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings), credentials: 'include' });
+      if (!r.ok) throw new Error(`Backend returned ${r.status}`);
+      const json = await r.json();
+      return json;
+    } catch (e) {
+      console.warn('Backend startAutopilot error', e);
+    }
+  }
+  // No backend: frontend should continue local autopilot instead
+  return null;
+};
+
+export const stopAutopilot = async (): Promise<any> => {
+  if (USE_BACKEND && BACKEND_URL) {
+    try {
+      const r = await fetch(`${BACKEND_URL}/autopilot/stop`, { method: 'POST', credentials: 'include' });
+      if (!r.ok) throw new Error(`Backend returned ${r.status}`);
+      const json = await r.json();
+      return json;
+    } catch (e) {
+      console.warn('Backend stopAutopilot error', e);
+    }
+  }
+  return null;
+};
+
+export const getAutopilotStatus = async (): Promise<any> => {
+  if (USE_BACKEND && BACKEND_URL) {
+    try {
+      const r = await fetch(`${BACKEND_URL}/autopilot/status`, { credentials: 'include' });
+      if (!r.ok) throw new Error(`Backend returned ${r.status}`);
+      const json = await r.json();
+      return json;
+    } catch (e) {
+      console.warn('Backend getAutopilotStatus error', e);
+    }
+  }
+  return null;
+};
+
 // --- Posts Operations ---
 
 export const getPosts = async (): Promise<BlogPost[]> => {
@@ -321,6 +365,69 @@ export const getAdminProfile = (): AdminProfile => {
 
 export const saveAdminProfile = (profile: AdminProfile) => {
   localStorage.setItem('mazadplus_admin_profile', JSON.stringify(profile));
+};
+
+// --- Auth Session (persist login) ---
+export const saveAuthSession = (remember: boolean) => {
+  if (!remember) {
+    // Do not persist session
+    localStorage.removeItem('mazadplus_auth');
+    return;
+  }
+  const session = { loggedIn: true, timestamp: new Date().toISOString() };
+  localStorage.setItem('mazadplus_auth', JSON.stringify(session));
+};
+
+export const getAuthSession = (): boolean => {
+  const s = localStorage.getItem('mazadplus_auth');
+  if (!s) return false;
+  try {
+    const obj = JSON.parse(s);
+    return !!obj?.loggedIn;
+  } catch (e) {
+    return false;
+  }
+};
+
+export const clearAuthSession = () => {
+  localStorage.removeItem('mazadplus_auth');
+};
+
+// --- Server-side auth helpers ---
+export const serverLogin = async (email: string, password: string, remember: boolean): Promise<any> => {
+  if (!USE_BACKEND || !BACKEND_URL) return null;
+  try {
+    const r = await fetch(`${BACKEND_URL}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, remember }), credentials: 'include' });
+    if (!r.ok) throw new Error(`Backend returned ${r.status}`);
+    return await r.json();
+  } catch (e) {
+    console.warn('Backend serverLogin error', e);
+    throw e;
+  }
+};
+
+export const serverLogout = async (): Promise<any> => {
+  if (!USE_BACKEND || !BACKEND_URL) return null;
+  try {
+    const r = await fetch(`${BACKEND_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
+    if (!r.ok) throw new Error(`Backend returned ${r.status}`);
+    return await r.json();
+  } catch (e) {
+    console.warn('Backend serverLogout error', e);
+    throw e;
+  }
+};
+
+export const getServerSession = async (): Promise<any> => {
+  if (!USE_BACKEND || !BACKEND_URL) return null;
+  try {
+    const r = await fetch(`${BACKEND_URL}/auth/session`, { credentials: 'include' });
+    if (!r.ok) throw new Error(`Backend returned ${r.status}`);
+    return await r.json();
+  } catch (e) {
+    console.warn('Backend getServerSession error', e);
+    return null;
+  }
 };
 
 export const getAdSettings = (): AdSettings => {

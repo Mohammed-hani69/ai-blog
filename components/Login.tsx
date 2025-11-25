@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Logo } from './Logo';
+import { isBackendConfigured } from '../services/backendClient';
+import * as StorageService from '../services/storage';
 import { AdminProfile } from '../types';
 
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (remember: boolean) => void;
   onBack: () => void;
   adminProfile: AdminProfile;
 }
@@ -12,12 +14,25 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onBack, adminProfile }) =
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Verify against stored admin profile
+    // If backend configured, use server login
+    if (isBackendConfigured()) {
+      try {
+        await StorageService.serverLogin(email, password, rememberMe);
+        onLogin(rememberMe);
+        return;
+      } catch (e:any) {
+        setError(e?.message || 'فشل تسجيل الدخول');
+        return;
+      }
+    }
+
+    // Fallback: verify against stored admin profile
     if (email === adminProfile.email && password === adminProfile.password) {
-      onLogin();
+      onLogin(rememberMe);
     } else {
       setError('بيانات الدخول غير صحيحة');
     }
@@ -65,7 +80,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onBack, adminProfile }) =
 
           <div className="flex items-center justify-between text-sm">
             <label className="flex items-center text-slate-600 cursor-pointer">
-              <input type="checkbox" className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 ml-2" />
+              <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 ml-2" />
               تذكرني
             </label>
             <a href="#" className="text-blue-600 hover:underline">نسيت كلمة المرور؟</a>
